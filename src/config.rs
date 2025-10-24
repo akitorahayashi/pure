@@ -1,7 +1,8 @@
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+use dirs_next as dirs;
 use globset::{Glob, GlobSet};
 use serde::{Deserialize, Serialize};
 
@@ -58,9 +59,12 @@ impl Config {
 }
 
 pub fn config_file_path() -> Result<PathBuf, AppError> {
-    let config_root = dirs::config_dir().ok_or_else(|| {
-        AppError::config("Unable to determine configuration directory for this platform")
-    })?;
+    let config_root = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(dirs::config_dir)
+        .ok_or_else(|| {
+            AppError::config("Unable to determine configuration directory for this platform")
+        })?;
     Ok(config_root.join("pure").join("config.toml"))
 }
 
@@ -78,13 +82,16 @@ pub fn ensure_config_file() -> Result<PathBuf, AppError> {
 }
 
 fn expand_home(value: &str) -> Result<String, AppError> {
-    if let Some(stripped) = value.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            let expanded = Path::new(&home).join(stripped);
-            Ok(expanded.display().to_string())
-        } else {
-            Err(AppError::config("Unable to expand '~' because the home directory is unknown"))
-        }
+    if !value.starts_with('~') {
+        return Ok(value.to_string());
+    }
+    let home_dir = dirs::home_dir().ok_or_else(|| {
+        AppError::config("Unable to expand '~' because the home directory is unknown")
+    })?;
+    if value == "~" {
+        Ok(home_dir.display().to_string())
+    } else if let Some(stripped) = value.strip_prefix("~/") {
+        Ok(home_dir.join(stripped).display().to_string())
     } else {
         Ok(value.to_string())
     }

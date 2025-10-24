@@ -42,7 +42,11 @@ fn open_editor(path: &Path) -> Result<(), AppError> {
         .or_else(|_| std::env::var("VISUAL"))
         .unwrap_or_else(|_| "nano".to_string());
 
-    let status = Command::new(&editor)
+    let mut parts = editor.split_whitespace();
+    let prog = parts.next().ok_or_else(|| AppError::Editor("EDITOR was empty".into()))?;
+    let args: Vec<&str> = parts.collect();
+    let status = Command::new(prog)
+        .args(args)
         .arg(path)
         .status()
         .map_err(|err| AppError::Editor(err.to_string()))?;

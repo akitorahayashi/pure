@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use byte_unit::{Byte, UnitType};
+use dirs_next as dirs;
 
 /// Format bytes into a human-readable string.
 pub fn format_bytes(size: u64) -> String {

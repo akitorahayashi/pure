@@ -59,12 +59,12 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     }
 
     let items_to_delete: Vec<ScanItem> =
-        subset.categories.values().flat_map(|report| report.items.clone()).collect();
+        subset.categories.values().flat_map(|report| &report.items).cloned().collect();
 
     scanner.delete_items(&items_to_delete)?;
 
     println!(
-        "Deleted {} across {} categor(ies).",
+        "Attempted to delete {} across {} categor(ies).",
         format_bytes(subset.total_size()),
         selected_categories.len()
     );

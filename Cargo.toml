@@ -7,7 +7,7 @@ edition = "2024"
 byte-unit = "5.1"
 clap = { version = "4.5", features = ["derive"] }
 dialoguer = "0.11"
-dirs = "5.0"
+dirs-next = "2.0"
 globset = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"

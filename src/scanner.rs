@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use dirs_next as dirs;
 use walkdir::WalkDir;
 
 use crate::config::Config;
@@ -35,11 +36,7 @@ impl Scanner {
                 Category::Browser => self.scan_browser(verbose)?,
                 Category::Trash => self.scan_trash(verbose)?,
             };
-            if !items.is_empty() {
-                report.add_items(*category, items);
-            } else {
-                report.add_items(*category, Vec::new());
-            }
+            report.add_items(*category, items);
         }
         Ok(report)
     }
@@ -203,8 +200,19 @@ impl Scanner {
 
     fn is_excluded(&self, path: &Path) -> bool {
         if let Some(set) = &self.exclude {
-            let candidate = path.to_string_lossy();
-            set.is_match(candidate.as_ref())
+            let candidate = if path.is_absolute() {
+                path.to_string_lossy().to_string()
+            } else {
+                // For relative paths, try to make absolute by joining with current dir
+                match std::env::current_dir() {
+                    Ok(cwd) => {
+                        let joined = cwd.join(path);
+                        joined.to_string_lossy().to_string()
+                    }
+                    Err(_) => path.to_string_lossy().to_string(),
+                }
+            };
+            set.is_match(&candidate)
         } else {
             false
         }
@@ -243,7 +251,6 @@ fn log_paths() -> Vec<PathBuf> {
     if let Some(home) = dirs::home_dir() {
         paths.push(home.join("Library/Logs"));
     }
-    paths.push(PathBuf::from("/var/log"));
     paths
 }
 
@@ -262,7 +269,9 @@ fn browser_paths() -> Vec<PathBuf> {
     if let Some(home) = dirs::home_dir() {
         paths.push(home.join("Library/Caches/com.apple.Safari"));
         paths.push(home.join("Library/Application Support/Google/Chrome/Default/Cache"));
-        paths.push(home.join("Library/Application Support/Firefox/Profiles"));
+        // Firefox caches live under Library/Caches, not Application Support.
+        // This aggregates per-profile cache dirs without touching profile data.
+        paths.push(home.join("Library/Caches/Firefox/Profiles"));
     }
     paths
 }

@@ -22,7 +22,7 @@ fn run_type_dev_yes_deletes_directories() {
         .arg("-y")
         .arg(temp.path());
 
-    cmd.assert().success().stdout(predicate::str::contains("Deleted"));
+    cmd.assert().success().stdout(predicate::str::contains("Attempted to delete"));
 
     cache.assert(predicates::path::missing());
 }
@@ -42,7 +42,7 @@ fn run_interactive_accepts_selection() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Deletion plan"))
-        .stdout(predicate::str::contains("Deleted"));
+        .stdout(predicate::str::contains("Attempted to delete"));
 
     cache.assert(predicates::path::missing());
 }
