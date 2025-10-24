@@ -3,7 +3,7 @@ use crate::error::AppError;
 use crate::model::{Category, ScanItem};
 use std::path::PathBuf;
 
-const XCODE_TARGETS: &[&str] = &["DerivedData", "build"];
+const XCODE_TARGETS: &[&str] = &["DerivedData"];
 
 pub struct XcodeScanner(GenericScanner);
 

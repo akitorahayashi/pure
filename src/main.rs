@@ -5,7 +5,7 @@ use pure::commands::{config_cmd::ConfigOptions, run::RunOptions, scan::ScanOptio
 use pure::commands::{execute_config, execute_run, execute_scan};
 use pure::error::AppError;
 use pure::model::Category;
-use pure::path::resolve_roots;
+use pure::path::resolve_roots_with_current;
 
 fn main() {
     if let Err(err) = run() {
@@ -22,9 +22,10 @@ fn run() -> Result<(), AppError> {
             let categories = resolve_categories(args.categories, args.all);
             let options = ScanOptions {
                 categories,
-                roots: resolve_roots(&args.paths),
+                roots: resolve_roots_with_current(&args.paths, args.current),
                 verbose: args.verbose,
                 list: args.list,
+                current: args.current,
             };
             execute_scan(options)?;
         }
@@ -34,18 +35,15 @@ fn run() -> Result<(), AppError> {
             let options = RunOptions {
                 categories,
                 all: args.all,
-                roots: resolve_roots(&args.paths),
+                roots: resolve_roots_with_current(&args.paths, args.current),
                 verbose: args.verbose,
                 assume_yes: args.yes,
+                current: args.current,
             };
             execute_run(options)?;
         }
         Commands::Config(args) => {
-            let options = ConfigOptions {
-                show_path: args.path,
-                edit: args.edit,
-                add_exclude: args.add_exclude,
-            };
+            let options = ConfigOptions { show_path: args.path, edit: args.edit };
             execute_config(options)?;
         }
     }
@@ -88,6 +86,10 @@ struct ScanArgs {
     #[arg(long = "list", action = ArgAction::SetTrue)]
     list: bool,
 
+    /// Scan only the current directory instead of ~/Desktop.
+    #[arg(short = 'c', long = "current", action = ArgAction::SetTrue, conflicts_with = "paths")]
+    current: bool,
+
     /// Optional paths to scan (defaults to ~/Desktop).
     #[arg(value_name = "PATH", num_args = 0..)]
     paths: Vec<PathBuf>,
@@ -111,6 +113,10 @@ struct RunArgs {
     #[arg(short, long, action = ArgAction::SetTrue)]
     verbose: bool,
 
+    /// Clean only the current directory instead of ~/Desktop.
+    #[arg(short = 'c', long = "current", action = ArgAction::SetTrue, conflicts_with = "paths")]
+    current: bool,
+
     /// Optional paths to operate on (defaults to ~/Desktop).
     #[arg(value_name = "PATH", num_args = 0..)]
     paths: Vec<PathBuf>,
@@ -125,10 +131,6 @@ struct ConfigArgs {
     /// Open the configuration file in $EDITOR.
     #[arg(long = "edit", action = ArgAction::SetTrue)]
     edit: bool,
-
-    /// Append a new exclude pattern to the configuration file.
-    #[arg(long = "add-exclude", value_name = "PATTERN")]
-    add_exclude: Option<String>,
 }
 
 fn resolve_categories(categories: Vec<Category>, all: bool) -> Vec<Category> {

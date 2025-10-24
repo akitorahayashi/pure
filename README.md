@@ -16,8 +16,7 @@ confirmation or the `-y/--yes` flag.
 - **Interactive deletion** – `pure run` without flags lets you choose categories to delete
   interactively before the final confirmation prompt.
 - **Desktop-focused** – Defaults to scanning `~/Desktop` for safety, avoiding system areas.
-- **Persistent exclusions** – Configure glob-style exclusions via `pure config --add-exclude`
-  so trusted paths are never touched.
+- **Current directory mode** – Use `--current` to scan only the current directory; automatically skips system-wide categories like Homebrew.
 
 ## Installation
 
@@ -30,25 +29,25 @@ The release binary will be available at `target/release/pure`.
 ## Usage
 
 ```bash
-pure scan --all              # scan every category (defaults to ~/Desktop)
-pure scan --list             # quickly list cleanup targets without calculating sizes
-pure scan --type python -v   # detailed list of Python caches
-pure scan --type nodejs      # scan NodeJS projects only
-pure run                     # scan, pick categories interactively, then confirm before deleting
-pure run --type rust -y      # delete Rust build artifacts without prompting
-pure config --add-exclude ~/Desktop/important-project/.venv  # persistently ignore a path
-pure config --path           # show where the configuration file is stored
+pure scan --all                           # scan every category (defaults to ~/Desktop)
+pure scan --current                       # scan only the current directory instead of ~/Desktop
+pure scan --list                          # quickly list cleanup targets without calculating sizes
+pure scan --type python -v                # detailed list of Python caches
+pure scan --type nodejs                   # scan NodeJS projects only
+pure run                                  # scan, pick categories interactively, then confirm before deleting
+pure run --current --type rust -y         # delete Rust build artifacts in current directory without prompting
+pure config --path                        # show where the configuration file is stored
 ```
 
 ### Categories
 
 | Category  | Description (examples) |
 |-----------|------------------------|
-| `xcode`   | Xcode build artifacts including `DerivedData` and `build` directories. |
+| `xcode`   | Xcode build artifacts including `DerivedData` directories. |
 | `python`  | Python caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `.venv`, and `.uv-cache`. |
 | `rust`    | Rust build artifacts in `target` directories. |
 | `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
-| `brew`    | Homebrew caches and build artifacts. |
+| `brew`    | Homebrew caches and build artifacts. Note: Skipped when using `--current` option. |
 
 ### Safety Model
 

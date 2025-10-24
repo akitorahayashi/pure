@@ -1,12 +1,12 @@
 use std::io::{self, Write};
 use std::path::PathBuf;
 
+use crate::commands::scan::get_scanners;
 use crate::config::Config;
 use crate::error::AppError;
 use crate::format::format_bytes;
 use crate::model::{Category, ScanItem, ScanReport};
-use crate::path::display_path;
-use crate::scanners::*;
+use crate::path::{display_path, is_excluded, safe_remove_dir_all};
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
@@ -16,6 +16,7 @@ pub struct RunOptions {
     pub roots: Vec<PathBuf>,
     pub verbose: bool,
     pub assume_yes: bool,
+    pub current: bool,
 }
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
@@ -34,6 +35,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         &scan_categories,
         &options.roots,
         options.verbose,
+        options.current,
         exclude.clone(),
     )?;
 
@@ -178,15 +180,10 @@ fn scan_categories_for_run(
     categories: &[Category],
     roots: &[std::path::PathBuf],
     verbose: bool,
+    current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
-    let scanners: Vec<Box<dyn CategoryScanner>> = vec![
-        Box::new(XcodeScanner::new(exclude.clone())),
-        Box::new(PythonScanner::new(exclude.clone())),
-        Box::new(RustScanner::new(exclude.clone())),
-        Box::new(NodejsScanner::new(exclude.clone())),
-        Box::new(BrewScanner::new(exclude.clone())),
-    ];
+    let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =
@@ -220,36 +217,18 @@ fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result
     }
 
     // Helper function to check exclusions
-    let is_excluded = |path: &std::path::Path| -> bool {
-        if let Some(set) = &exclude {
-            let candidate = if path.is_absolute() {
-                path.to_string_lossy().to_string()
-            } else {
-                match std::env::current_dir() {
-                    Ok(cwd) => {
-                        let joined = cwd.join(path);
-                        joined.to_string_lossy().to_string()
-                    }
-                    Err(_) => path.to_string_lossy().to_string(),
-                }
-            };
-            set.is_match(&candidate)
-        } else {
-            false
-        }
-    };
-
     // Create progress bar with light blue style
     let pb = ProgressBar::new(items.len() as u64);
     pb.set_style(
-        ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-            .unwrap()
-            .progress_chars("##-"),
+        ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+        )
+        .unwrap()
+        .progress_chars("##-"),
     );
 
     for item in items.iter() {
-        if is_excluded(&item.path) {
+        if is_excluded(&item.path, exclude.as_ref()) {
             pb.inc(1);
             continue;
         }
@@ -263,11 +242,9 @@ fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result
 
         match item.kind {
             ItemKind::Directory => {
-                if let Err(err) = fs::remove_dir_all(&item.path)
-                    && err.kind() != io::ErrorKind::NotFound
-                {
+                if let Err(err) = safe_remove_dir_all(&item.path, exclude.as_ref(), false) {
                     pb.finish_and_clear();
-                    return Err(AppError::Io(err));
+                    return Err(err);
                 }
             }
             ItemKind::File => {
