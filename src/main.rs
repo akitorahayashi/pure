@@ -25,6 +25,7 @@ fn run() -> Result<(), AppError> {
                 roots: resolve_roots_with_current(&args.paths, args.current),
                 verbose: args.verbose,
                 list: args.list,
+                current: args.current,
             };
             execute_scan(options)?;
         }
@@ -37,6 +38,7 @@ fn run() -> Result<(), AppError> {
                 roots: resolve_roots_with_current(&args.paths, args.current),
                 verbose: args.verbose,
                 assume_yes: args.yes,
+                current: args.current,
             };
             execute_run(options)?;
         }

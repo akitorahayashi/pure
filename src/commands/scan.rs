@@ -14,6 +14,7 @@ pub struct ScanOptions {
     pub roots: Vec<PathBuf>,
     pub verbose: bool,
     pub list: bool,
+    pub current: bool,
 }
 
 pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
@@ -21,13 +22,19 @@ pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
     let exclude = config.compile_excludes()?;
 
     if options.list {
-        let list_results = list_targets(&options.categories, &options.roots, exclude)?;
+        let list_results =
+            list_targets(&options.categories, &options.roots, options.current, exclude)?;
         print_list_results(&list_results);
         // Return empty report for --list mode
         Ok(ScanReport::new())
     } else {
-        let report =
-            scan_categories(&options.categories, &options.roots, options.verbose, exclude)?;
+        let report = scan_categories(
+            &options.categories,
+            &options.roots,
+            options.verbose,
+            options.current,
+            exclude,
+        )?;
         print_report(&report, &options);
         Ok(report)
     }
@@ -37,15 +44,20 @@ fn scan_categories(
     categories: &[Category],
     roots: &[PathBuf],
     verbose: bool,
+    current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
-    let scanners: Vec<Box<dyn CategoryScanner>> = vec![
+    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
         Box::new(XcodeScanner::new(exclude.clone())),
         Box::new(PythonScanner::new(exclude.clone())),
         Box::new(RustScanner::new(exclude.clone())),
         Box::new(NodejsScanner::new(exclude.clone())),
-        Box::new(BrewScanner::new(exclude.clone())),
     ];
+
+    // Only add BrewScanner if not scanning current directory
+    if !current {
+        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
+    }
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =
@@ -72,15 +84,20 @@ fn scan_categories(
 fn list_targets(
     categories: &[Category],
     roots: &[PathBuf],
+    current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<BTreeMap<Category, Vec<String>>, AppError> {
-    let scanners: Vec<Box<dyn CategoryScanner>> = vec![
+    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
         Box::new(XcodeScanner::new(exclude.clone())),
         Box::new(PythonScanner::new(exclude.clone())),
         Box::new(RustScanner::new(exclude.clone())),
         Box::new(NodejsScanner::new(exclude.clone())),
-        Box::new(BrewScanner::new(exclude.clone())),
     ];
+
+    // Only add BrewScanner if not scanning current directory
+    if !current {
+        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
+    }
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =

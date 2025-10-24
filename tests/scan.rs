@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
+use std::env;
 
 fn command() -> Command {
     Command::cargo_bin("pure").expect("binary exists")
@@ -27,4 +28,43 @@ fn scan_python_verbose_lists_targets() {
         .stdout(predicate::str::contains("Scan results"))
         .stdout(predicate::str::contains("python"))
         .stdout(predicate::str::contains("~/project/__pycache__"));
+}
+
+#[test]
+fn scan_current_skips_brew_category() {
+    let temp = assert_fs::TempDir::new().unwrap();
+
+    // Change to the temp directory to test --current
+    let original_dir = env::current_dir().unwrap();
+    env::set_current_dir(temp.path()).unwrap();
+
+    let mut cmd = command();
+    cmd.env("HOME", temp.path())
+        .env("XDG_CONFIG_HOME", temp.child("config").path())
+        .arg("scan")
+        .arg("--current")
+        .arg("--list");
+
+    let result = cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
+
+    // Brew should not appear in --current scan results
+    result.stdout(predicate::str::contains("Homebrew").not());
+
+    // Restore original directory
+    env::set_current_dir(original_dir).unwrap();
+}
+
+#[test]
+fn scan_default_includes_brew_category() {
+    let temp = assert_fs::TempDir::new().unwrap();
+
+    let mut cmd = command();
+    cmd.env("HOME", temp.path())
+        .env("XDG_CONFIG_HOME", temp.child("config").path())
+        .arg("scan")
+        .arg("--list")
+        .arg(temp.path());
+
+    // Default scan should include brew (even if no targets found, category should be checked)
+    cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
 }

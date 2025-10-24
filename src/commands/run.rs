@@ -16,6 +16,7 @@ pub struct RunOptions {
     pub roots: Vec<PathBuf>,
     pub verbose: bool,
     pub assume_yes: bool,
+    pub current: bool,
 }
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
@@ -34,6 +35,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         &scan_categories,
         &options.roots,
         options.verbose,
+        options.current,
         exclude.clone(),
     )?;
 
@@ -178,15 +180,20 @@ fn scan_categories_for_run(
     categories: &[Category],
     roots: &[std::path::PathBuf],
     verbose: bool,
+    current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
-    let scanners: Vec<Box<dyn CategoryScanner>> = vec![
+    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
         Box::new(XcodeScanner::new(exclude.clone())),
         Box::new(PythonScanner::new(exclude.clone())),
         Box::new(RustScanner::new(exclude.clone())),
         Box::new(NodejsScanner::new(exclude.clone())),
-        Box::new(BrewScanner::new(exclude.clone())),
     ];
+
+    // Only add BrewScanner if not scanning current directory
+    if !current {
+        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
+    }
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =

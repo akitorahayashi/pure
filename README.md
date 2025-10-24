@@ -16,6 +16,7 @@ confirmation or the `-y/--yes` flag.
 - **Interactive deletion** – `pure run` without flags lets you choose categories to delete
   interactively before the final confirmation prompt.
 - **Desktop-focused** – Defaults to scanning `~/Desktop` for safety, avoiding system areas.
+- **Current directory mode** – Use `--current` to scan only the current directory; automatically skips system-wide categories like Homebrew.
 
 ## Installation
 
@@ -46,7 +47,7 @@ pure config --path                        # show where the configuration file is
 | `python`  | Python caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `.venv`, and `.uv-cache`. |
 | `rust`    | Rust build artifacts in `target` directories. |
 | `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
-| `brew`    | Homebrew caches and build artifacts. |
+| `brew`    | Homebrew caches and build artifacts. Note: Skipped when using `--current` option. |
 
 ### Safety Model
 
