@@ -47,17 +47,7 @@ fn scan_categories(
     current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
-    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
-        Box::new(XcodeScanner::new(exclude.clone())),
-        Box::new(PythonScanner::new(exclude.clone())),
-        Box::new(RustScanner::new(exclude.clone())),
-        Box::new(NodejsScanner::new(exclude.clone())),
-    ];
-
-    // Only add BrewScanner if not scanning current directory
-    if !current {
-        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
-    }
+    let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =
@@ -87,17 +77,7 @@ fn list_targets(
     current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<BTreeMap<Category, Vec<String>>, AppError> {
-    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
-        Box::new(XcodeScanner::new(exclude.clone())),
-        Box::new(PythonScanner::new(exclude.clone())),
-        Box::new(RustScanner::new(exclude.clone())),
-        Box::new(NodejsScanner::new(exclude.clone())),
-    ];
-
-    // Only add BrewScanner if not scanning current directory
-    if !current {
-        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
-    }
+    let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> =
@@ -157,4 +137,23 @@ fn print_list_results(results: &BTreeMap<Category, Vec<String>>) {
             println!();
         }
     }
+}
+
+pub fn get_scanners(
+    exclude: Option<globset::GlobSet>,
+    current: bool,
+) -> Vec<Box<dyn CategoryScanner>> {
+    let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
+        Box::new(XcodeScanner::new(exclude.clone())),
+        Box::new(PythonScanner::new(exclude.clone())),
+        Box::new(RustScanner::new(exclude.clone())),
+        Box::new(NodejsScanner::new(exclude.clone())),
+    ];
+
+    // Only add BrewScanner if not scanning current directory
+    if !current {
+        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
+    }
+
+    scanners
 }

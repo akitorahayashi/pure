@@ -4,6 +4,7 @@ use dirs_next as dirs;
 
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
+use crate::path::{is_excluded, path_size};
 
 use super::CategoryScanner;
 
@@ -26,67 +27,6 @@ impl BrewScanner {
         paths
     }
 
-    fn is_excluded(&self, path: &std::path::Path) -> bool {
-        if let Some(set) = &self.exclude {
-            let candidate = if path.is_absolute() {
-                path.to_string_lossy().to_string()
-            } else {
-                match std::env::current_dir() {
-                    Ok(cwd) => {
-                        let joined = cwd.join(path);
-                        joined.to_string_lossy().to_string()
-                    }
-                    Err(_) => path.to_string_lossy().to_string(),
-                }
-            };
-            set.is_match(&candidate)
-        } else {
-            false
-        }
-    }
-
-    fn path_size(&self, path: &std::path::Path, verbose: bool) -> Result<u64, AppError> {
-        if path.is_file() {
-            Ok(path.metadata()?.len())
-        } else {
-            let mut total = 0u64;
-            let mut walker = walkdir::WalkDir::new(path).into_iter();
-            while let Some(entry) = walker.next() {
-                let entry = match entry {
-                    Ok(entry) => entry,
-                    Err(err) => {
-                        if verbose {
-                            eprintln!("Skipping {:?}: {}", err.path(), err);
-                        }
-                        continue;
-                    }
-                };
-
-                let entry_path = entry.path();
-                if self.is_excluded(entry_path) {
-                    if entry.file_type().is_dir() {
-                        walker.skip_current_dir();
-                    }
-                    continue;
-                }
-
-                if entry.file_type().is_file() {
-                    match entry.metadata() {
-                        Ok(metadata) => {
-                            total = total.saturating_add(metadata.len());
-                        }
-                        Err(err) => {
-                            if verbose {
-                                eprintln!("Skipping {}: {}", entry_path.display(), err);
-                            }
-                        }
-                    }
-                }
-            }
-            Ok(total)
-        }
-    }
-
     fn collect_directories(
         &self,
         paths: Vec<PathBuf>,
@@ -94,11 +34,11 @@ impl BrewScanner {
     ) -> Result<Vec<ScanItem>, AppError> {
         let mut items = Vec::new();
         for path in paths {
-            if self.is_excluded(&path) {
+            if is_excluded(&path, self.exclude.as_ref()) {
                 continue;
             }
             if path.exists() {
-                let size = match self.path_size(&path, verbose) {
+                let size = match path_size(&path, self.exclude.as_ref(), verbose) {
                     Ok(size) => size,
                     Err(err) => {
                         if verbose {
@@ -128,7 +68,7 @@ impl CategoryScanner for BrewScanner {
         let paths = Self::brew_paths();
 
         for path in paths {
-            if !self.is_excluded(&path) && path.exists() {
+            if !is_excluded(&path, self.exclude.as_ref()) && path.exists() {
                 targets.push(format!("{} (exists)", path.display()));
             }
         }
