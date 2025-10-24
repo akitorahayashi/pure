@@ -37,12 +37,6 @@ impl Config {
         Ok(())
     }
 
-    pub fn append_exclude(&mut self, value: String) {
-        if !self.exclude.iter().any(|existing| existing == &value) {
-            self.exclude.push(value);
-        }
-    }
-
     pub fn compile_excludes(&self) -> Result<Option<GlobSet>, AppError> {
         if self.exclude.is_empty() {
             return Ok(None);

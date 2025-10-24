@@ -26,3 +26,17 @@ pub fn resolve_roots(explicit: &[PathBuf]) -> Vec<PathBuf> {
         explicit.to_vec()
     }
 }
+
+pub fn resolve_roots_with_current(explicit: &[PathBuf], current: bool) -> Vec<PathBuf> {
+    if current {
+        vec![std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))]
+    } else if explicit.is_empty() {
+        if let Some(home) = dirs::home_dir() {
+            vec![home.join("Desktop")]
+        } else {
+            vec![std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))]
+        }
+    } else {
+        explicit.to_vec()
+    }
+}

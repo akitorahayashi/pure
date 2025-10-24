@@ -1,14 +1,13 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::config::{Config, config_file_path, ensure_config_file};
+use crate::config::{config_file_path, ensure_config_file};
 use crate::error::AppError;
 use crate::path::display_path;
 
 pub struct ConfigOptions {
     pub show_path: bool,
     pub edit: bool,
-    pub add_exclude: Option<String>,
 }
 
 pub fn execute_config(options: ConfigOptions) -> Result<(), AppError> {
@@ -17,19 +16,12 @@ pub fn execute_config(options: ConfigOptions) -> Result<(), AppError> {
         println!("Configuration file: {}", display_path(&path));
     }
 
-    if let Some(ref pattern) = options.add_exclude {
-        let mut config = Config::load()?;
-        config.append_exclude(pattern.clone());
-        config.save()?;
-        println!("Added exclude pattern '{}'.", pattern);
-    }
-
     if options.edit {
         let path = ensure_config_file()?;
         open_editor(&path)?;
     }
 
-    if !options.show_path && options.add_exclude.is_none() && !options.edit {
+    if !options.show_path && !options.edit {
         let path = config_file_path()?;
         println!("Configuration file: {}", display_path(&path));
     }

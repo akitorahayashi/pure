@@ -16,8 +16,6 @@ confirmation or the `-y/--yes` flag.
 - **Interactive deletion** – `pure run` without flags lets you choose categories to delete
   interactively before the final confirmation prompt.
 - **Desktop-focused** – Defaults to scanning `~/Desktop` for safety, avoiding system areas.
-- **Persistent exclusions** – Configure glob-style exclusions via `pure config --add-exclude`
-  so trusted paths are never touched.
 
 ## Installation
 
@@ -30,14 +28,14 @@ The release binary will be available at `target/release/pure`.
 ## Usage
 
 ```bash
-pure scan --all              # scan every category (defaults to ~/Desktop)
-pure scan --list             # quickly list cleanup targets without calculating sizes
-pure scan --type python -v   # detailed list of Python caches
-pure scan --type nodejs      # scan NodeJS projects only
-pure run                     # scan, pick categories interactively, then confirm before deleting
-pure run --type rust -y      # delete Rust build artifacts without prompting
-pure config --add-exclude ~/Desktop/important-project/.venv  # persistently ignore a path
-pure config --path           # show where the configuration file is stored
+pure scan --all                           # scan every category (defaults to ~/Desktop)
+pure scan --current                       # scan only the current directory instead of ~/Desktop
+pure scan --list                          # quickly list cleanup targets without calculating sizes
+pure scan --type python -v                # detailed list of Python caches
+pure scan --type nodejs                   # scan NodeJS projects only
+pure run                                  # scan, pick categories interactively, then confirm before deleting
+pure run --current --type rust -y         # delete Rust build artifacts in current directory without prompting
+pure config --path                        # show where the configuration file is stored
 ```
 
 ### Categories
