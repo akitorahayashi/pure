@@ -3,7 +3,7 @@ use std::process::Command;
 
 use crate::config::{Config, config_file_path, ensure_config_file};
 use crate::error::AppError;
-use crate::utils::display_path;
+use crate::path::display_path;
 
 pub struct ConfigOptions {
     pub show_path: bool,

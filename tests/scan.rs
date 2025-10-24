@@ -7,7 +7,7 @@ fn command() -> Command {
 }
 
 #[test]
-fn scan_dev_verbose_lists_targets() {
+fn scan_python_verbose_lists_targets() {
     let temp = assert_fs::TempDir::new().unwrap();
     let project = temp.child("project/__pycache__");
     project.create_dir_all().unwrap();
@@ -18,13 +18,13 @@ fn scan_dev_verbose_lists_targets() {
         .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--type")
-        .arg("dev")
+        .arg("python")
         .arg("--verbose")
         .arg(temp.path());
 
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Scan results"))
-        .stdout(predicate::str::contains("dev"))
+        .stdout(predicate::str::contains("python"))
         .stdout(predicate::str::contains("~/project/__pycache__"));
 }

@@ -18,7 +18,7 @@ fn run_type_dev_yes_deletes_directories() {
         .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("run")
         .arg("--type")
-        .arg("dev")
+        .arg("nodejs")
         .arg("-y")
         .arg(temp.path());
 
@@ -38,7 +38,8 @@ fn run_interactive_accepts_selection() {
     cmd.env("HOME", temp.path())
         .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("run")
-        .write_stdin("dev\ny\n")
+        .arg(temp.path())
+        .write_stdin("python\ny\n")
         .assert()
         .success()
         .stdout(predicate::str::contains("Deletion plan"))

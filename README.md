@@ -1,22 +1,23 @@
-# pure
+## Overview
 
-`pure` is a macOS-focused command line cleaner designed for developers and power users. It scans
-common cache locations, log directories, Homebrew artifacts, and other disposable files before
-you commit to deletion. Safety comes first: every run starts with a dry-run scan, and nothing is
-removed without an explicit confirmation or the `-y/--yes` flag.
+`pure` is a desktop-focused command line cleaner designed for developers. It scans development
+caches and build artifacts in your desktop projects to help reclaim disk space. Safety comes
+first: every run starts with a dry-run scan, and nothing is removed without an explicit
+confirmation or the `-y/--yes` flag.
 
 ## Features
 
 - **Dry-run by default** – `pure scan` reports what can be removed and how much space each
   category represents.
-- **Category-aware cleaning** – Target development caches, system caches, logs, Homebrew
-  artefacts, browser caches, or the trash individually or all at once.
+- **Language-aware cleaning** – Target Python, NodeJS, Rust, Xcode, or Homebrew caches
+  individually or all at once.
+- **Fast preview** – `pure scan --list` quickly shows what cleanup targets exist without
+  calculating sizes.
 - **Interactive deletion** – `pure run` without flags lets you choose categories to delete
   interactively before the final confirmation prompt.
-- **Persistent exclusions** – Configure glob-style exclusions (e.g. `~/projects/app/.venv`) via
-  `pure config --add-exclude` so trusted paths are never touched.
-- **macOS aware** – Looks in standard macOS locations such as `~/Library/Caches`, Safari and
-  Chrome cache folders, and the user trash.
+- **Desktop-focused** – Defaults to scanning `~/Desktop` for safety, avoiding system areas.
+- **Persistent exclusions** – Configure glob-style exclusions via `pure config --add-exclude`
+  so trusted paths are never touched.
 
 ## Installation
 
@@ -29,11 +30,13 @@ The release binary will be available at `target/release/pure`.
 ## Usage
 
 ```bash
-pure scan --all              # scan every category (default behaviour)
-pure scan --type dev -v      # detailed list of development caches within the current project
+pure scan --all              # scan every category (defaults to ~/Desktop)
+pure scan --list             # quickly list cleanup targets without calculating sizes
+pure scan --type python -v   # detailed list of Python caches
+pure scan --type nodejs      # scan NodeJS projects only
 pure run                     # scan, pick categories interactively, then confirm before deleting
-pure run --type logs -y      # delete log files without prompting for confirmation
-pure config --add-exclude ~/projects/app/.venv  # persistently ignore a virtual environment
+pure run --type rust -y      # delete Rust build artifacts without prompting
+pure config --add-exclude ~/Desktop/important-project/.venv  # persistently ignore a path
 pure config --path           # show where the configuration file is stored
 ```
 
@@ -41,12 +44,11 @@ pure config --path           # show where the configuration file is stored
 
 | Category  | Description (examples) |
 |-----------|------------------------|
-| `dev`     | Development caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `target`, `.venv`, and `DerivedData`. |
-| `system`  | macOS system caches located under `~/Library/Caches` and `/Library/Caches`. |
-| `logs`    | Log directories including `~/Library/Logs` and `/var/log`. |
-| `brew`    | Homebrew caches and build artefacts. |
-| `browser` | Safari, Chrome, and Firefox cache directories. |
-| `trash`   | The user trash at `~/.Trash`. |
+| `xcode`   | Xcode build artifacts including `DerivedData` and `build` directories. |
+| `python`  | Python caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `.venv`, and `.uv-cache`. |
+| `rust`    | Rust build artifacts in `target` directories. |
+| `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
+| `brew`    | Homebrew caches and build artifacts. |
 
 ### Safety Model
 

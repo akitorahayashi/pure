@@ -3,9 +3,12 @@ use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::error::AppError;
+use crate::format::format_bytes;
 use crate::model::{Category, ScanItem, ScanReport};
-use crate::scanner::Scanner;
-use crate::utils::{display_path, format_bytes};
+use crate::path::display_path;
+use crate::scanners::*;
+use indicatif::{ProgressBar, ProgressStyle};
+use rayon::prelude::*;
 
 pub struct RunOptions {
     pub categories: Option<Vec<Category>>,
@@ -17,7 +20,7 @@ pub struct RunOptions {
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let config = Config::load()?;
-    let scanner = Scanner::new(config)?;
+    let exclude = config.compile_excludes()?;
 
     let scan_categories = if options.all {
         Category::ALL.to_vec()
@@ -27,7 +30,12 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         Category::ALL.to_vec()
     };
 
-    let report = scanner.scan(&scan_categories, &options.roots, options.verbose)?;
+    let report = scan_categories_for_run(
+        &scan_categories,
+        &options.roots,
+        options.verbose,
+        exclude.clone(),
+    )?;
 
     let selected_categories = if options.all {
         Category::ALL.to_vec()
@@ -61,7 +69,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let items_to_delete: Vec<ScanItem> =
         subset.categories.values().flat_map(|report| &report.items).cloned().collect();
 
-    scanner.delete_items(&items_to_delete)?;
+    delete_items(&items_to_delete, exclude)?;
 
     println!(
         "Attempted to delete {} across {} categor(ies).",
@@ -148,16 +156,133 @@ fn print_summary(report: &ScanReport, verbose: bool) {
                 format_bytes(category_report.total_size()),
                 category_report.items.len()
             );
-            if verbose {
-                for item in &category_report.items {
+            // Always show file paths for transparency - this addresses the "I don't know what's being deleted" problem
+            for item in &category_report.items {
+                if verbose {
                     println!(
                         "    • {:<60} {}",
                         display_path(item.path_str()),
                         format_bytes(item.size)
                     );
+                } else {
+                    // Show path even in non-verbose mode for transparency
+                    println!("    • {}", display_path(item.path_str()));
                 }
             }
         }
     }
     println!("Total to delete: {}", format_bytes(report.total_size()));
+}
+
+fn scan_categories_for_run(
+    categories: &[Category],
+    roots: &[std::path::PathBuf],
+    verbose: bool,
+    exclude: Option<globset::GlobSet>,
+) -> Result<ScanReport, AppError> {
+    let scanners: Vec<Box<dyn CategoryScanner>> = vec![
+        Box::new(XcodeScanner::new(exclude.clone())),
+        Box::new(PythonScanner::new(exclude.clone())),
+        Box::new(RustScanner::new(exclude.clone())),
+        Box::new(NodejsScanner::new(exclude.clone())),
+        Box::new(BrewScanner::new(exclude.clone())),
+    ];
+
+    // Filter scanners to only those requested
+    let filtered_scanners: Vec<_> =
+        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
+
+    // Run scanners in parallel
+    let results: Result<Vec<_>, AppError> = filtered_scanners
+        .par_iter()
+        .map(|scanner| {
+            let items = scanner.scan(roots, verbose)?;
+            Ok((scanner.category(), items))
+        })
+        .collect();
+
+    // Collect results into report
+    let mut report = ScanReport::new();
+    for (category, items) in results? {
+        report.add_items(category, items);
+    }
+
+    Ok(report)
+}
+
+fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result<(), AppError> {
+    use crate::model::ItemKind;
+    use std::fs;
+    use std::io;
+
+    if items.is_empty() {
+        return Ok(());
+    }
+
+    // Helper function to check exclusions
+    let is_excluded = |path: &std::path::Path| -> bool {
+        if let Some(set) = &exclude {
+            let candidate = if path.is_absolute() {
+                path.to_string_lossy().to_string()
+            } else {
+                match std::env::current_dir() {
+                    Ok(cwd) => {
+                        let joined = cwd.join(path);
+                        joined.to_string_lossy().to_string()
+                    }
+                    Err(_) => path.to_string_lossy().to_string(),
+                }
+            };
+            set.is_match(&candidate)
+        } else {
+            false
+        }
+    };
+
+    // Create progress bar with light blue style
+    let pb = ProgressBar::new(items.len() as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
+    );
+
+    for item in items.iter() {
+        if is_excluded(&item.path) {
+            pb.inc(1);
+            continue;
+        }
+
+        // Update progress bar with current file
+        pb.set_message(format!(
+            "Deleting {} ({})",
+            display_path(item.path_str()),
+            format_bytes(item.size)
+        ));
+
+        match item.kind {
+            ItemKind::Directory => {
+                if let Err(err) = fs::remove_dir_all(&item.path)
+                    && err.kind() != io::ErrorKind::NotFound
+                {
+                    pb.finish_and_clear();
+                    return Err(AppError::Io(err));
+                }
+            }
+            ItemKind::File => {
+                if let Err(err) = fs::remove_file(&item.path)
+                    && err.kind() != io::ErrorKind::NotFound
+                {
+                    pb.finish_and_clear();
+                    return Err(AppError::Io(err));
+                }
+            }
+        }
+
+        pb.inc(1);
+    }
+
+    pb.finish_with_message("Deletion complete");
+    Ok(())
 }
