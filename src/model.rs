@@ -4,55 +4,50 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Category {
-    Dev,
-    System,
-    Logs,
+    Xcode,
+    Python,
+    Rust,
+    Nodejs,
     Brew,
-    Browser,
-    Trash,
 }
 
 impl Category {
-    pub const ALL: [Category; 6] = [
-        Category::Dev,
-        Category::System,
-        Category::Logs,
+    pub const ALL: [Category; 5] = [
+        Category::Xcode,
+        Category::Python,
+        Category::Rust,
+        Category::Nodejs,
         Category::Brew,
-        Category::Browser,
-        Category::Trash,
     ];
 
     pub fn from_name(value: &str) -> Option<Self> {
         match value.to_ascii_lowercase().as_str() {
-            "dev" => Some(Category::Dev),
-            "system" => Some(Category::System),
-            "logs" => Some(Category::Logs),
+            "xcode" => Some(Category::Xcode),
+            "python" => Some(Category::Python),
+            "rust" => Some(Category::Rust),
+            "nodejs" => Some(Category::Nodejs),
             "brew" => Some(Category::Brew),
-            "browser" => Some(Category::Browser),
-            "trash" => Some(Category::Trash),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Category::Dev => "dev",
-            Category::System => "system",
-            Category::Logs => "logs",
+            Category::Xcode => "xcode",
+            Category::Python => "python",
+            Category::Rust => "rust",
+            Category::Nodejs => "nodejs",
             Category::Brew => "brew",
-            Category::Browser => "browser",
-            Category::Trash => "trash",
         }
     }
 
     pub fn display_name(&self) -> &'static str {
         match self {
-            Category::Dev => "Development cache",
-            Category::System => "System cache",
-            Category::Logs => "Logs",
-            Category::Brew => "Homebrew cache",
-            Category::Browser => "Browser cache",
-            Category::Trash => "Trash",
+            Category::Xcode => "Xcode",
+            Category::Python => "Python",
+            Category::Rust => "Rust",
+            Category::Nodejs => "NodeJS",
+            Category::Brew => "Homebrew",
         }
     }
 }

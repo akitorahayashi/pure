@@ -3,6 +3,7 @@
 pub mod commands;
 pub mod config;
 pub mod error;
+pub mod format;
 pub mod model;
-pub mod scanner;
-pub mod utils;
+pub mod path;
+pub mod scanners;

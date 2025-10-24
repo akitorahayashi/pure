@@ -40,7 +40,7 @@ fn config_add_exclude_prevents_scan_hits() {
         .env("XDG_CONFIG_HOME", config_root.path())
         .arg("scan")
         .arg("--type")
-        .arg("dev")
+        .arg("nodejs")
         .arg("--verbose")
         .arg(home.path());
 
@@ -49,7 +49,7 @@ fn config_add_exclude_prevents_scan_hits() {
         .success()
         .stdout(predicate::str::contains("Scan results"))
         .stdout(predicate::str::contains("Total reclaimable: 0 B"))
-        .stdout(predicate::str::contains("dev"));
+        .stdout(predicate::str::contains("nodejs"));
 
     // Path option prints location
     let mut path_cmd = command();

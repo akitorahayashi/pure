@@ -5,7 +5,7 @@ use pure::commands::{config_cmd::ConfigOptions, run::RunOptions, scan::ScanOptio
 use pure::commands::{execute_config, execute_run, execute_scan};
 use pure::error::AppError;
 use pure::model::Category;
-use pure::utils::resolve_roots;
+use pure::path::resolve_roots;
 
 fn main() {
     if let Err(err) = run() {
@@ -24,6 +24,7 @@ fn run() -> Result<(), AppError> {
                 categories,
                 roots: resolve_roots(&args.paths),
                 verbose: args.verbose,
+                list: args.list,
             };
             execute_scan(options)?;
         }
@@ -71,7 +72,7 @@ enum Commands {
 
 #[derive(Args)]
 struct ScanArgs {
-    /// Restrict the scan to specific categories (e.g. dev, system).
+    /// Restrict the scan to specific categories (e.g. python, nodejs, rust, xcode, brew).
     #[arg(short = 't', long = "type", value_name = "CATEGORY", action = ArgAction::Append, conflicts_with = "all")]
     categories: Vec<Category>,
 
@@ -83,7 +84,11 @@ struct ScanArgs {
     #[arg(short, long, action = ArgAction::SetTrue)]
     verbose: bool,
 
-    /// Optional paths to scan (defaults to $HOME).
+    /// List existing cleanup targets without calculating sizes (fast).
+    #[arg(long = "list", action = ArgAction::SetTrue)]
+    list: bool,
+
+    /// Optional paths to scan (defaults to ~/Desktop).
     #[arg(value_name = "PATH", num_args = 0..)]
     paths: Vec<PathBuf>,
 }
@@ -106,7 +111,7 @@ struct RunArgs {
     #[arg(short, long, action = ArgAction::SetTrue)]
     verbose: bool,
 
-    /// Optional paths to operate on (defaults to $HOME).
+    /// Optional paths to operate on (defaults to ~/Desktop).
     #[arg(value_name = "PATH", num_args = 0..)]
     paths: Vec<PathBuf>,
 }
