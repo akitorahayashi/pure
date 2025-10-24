@@ -3,17 +3,19 @@ use std::path::PathBuf;
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
 
-pub mod xcode;
+pub mod brew;
+pub mod generic;
+pub mod nodejs;
 pub mod python;
 pub mod rust;
-pub mod nodejs;
-pub mod brew;
+pub mod xcode;
 
-pub use xcode::XcodeScanner;
+pub use brew::BrewScanner;
+pub use generic::GenericScanner;
+pub use nodejs::NodejsScanner;
 pub use python::PythonScanner;
 pub use rust::RustScanner;
-pub use nodejs::NodejsScanner;
-pub use brew::BrewScanner;
+pub use xcode::XcodeScanner;
 
 /// Trait that all category scanners must implement
 pub trait CategoryScanner: Send + Sync {

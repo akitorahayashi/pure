@@ -12,13 +12,8 @@ pub enum Category {
 }
 
 impl Category {
-    pub const ALL: [Category; 5] = [
-        Category::Xcode,
-        Category::Python,
-        Category::Rust,
-        Category::Nodejs,
-        Category::Brew,
-    ];
+    pub const ALL: [Category; 5] =
+        [Category::Xcode, Category::Python, Category::Rust, Category::Nodejs, Category::Brew];
 
     pub fn from_name(value: &str) -> Option<Self> {
         match value.to_ascii_lowercase().as_str() {

@@ -3,12 +3,12 @@ use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::error::AppError;
-use crate::model::{Category, ScanItem, ScanReport};
-use crate::scanners::*;
-use rayon::prelude::*;
-use indicatif::{ProgressBar, ProgressStyle};
 use crate::format::format_bytes;
+use crate::model::{Category, ScanItem, ScanReport};
 use crate::path::display_path;
+use crate::scanners::*;
+use indicatif::{ProgressBar, ProgressStyle};
+use rayon::prelude::*;
 
 pub struct RunOptions {
     pub categories: Option<Vec<Category>>,
@@ -30,7 +30,12 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         Category::ALL.to_vec()
     };
 
-    let report = scan_categories_for_run(&scan_categories, &options.roots, options.verbose, exclude.clone())?;
+    let report = scan_categories_for_run(
+        &scan_categories,
+        &options.roots,
+        options.verbose,
+        exclude.clone(),
+    )?;
 
     let selected_categories = if options.all {
         Category::ALL.to_vec()
@@ -184,10 +189,8 @@ fn scan_categories_for_run(
     ];
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> = scanners
-        .into_iter()
-        .filter(|scanner| categories.contains(&scanner.category()))
-        .collect();
+    let filtered_scanners: Vec<_> =
+        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
 
     // Run scanners in parallel
     let results: Result<Vec<_>, AppError> = filtered_scanners
@@ -208,9 +211,9 @@ fn scan_categories_for_run(
 }
 
 fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result<(), AppError> {
+    use crate::model::ItemKind;
     use std::fs;
     use std::io;
-    use crate::model::ItemKind;
 
     if items.is_empty() {
         return Ok(());

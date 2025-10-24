@@ -1,13 +1,13 @@
-use std::path::PathBuf;
-use std::collections::BTreeMap;
 use rayon::prelude::*;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::error::AppError;
-use crate::model::{Category, ScanReport};
-use crate::scanners::*;
 use crate::format::format_bytes;
+use crate::model::{Category, ScanReport};
 use crate::path::display_path;
+use crate::scanners::*;
 
 pub struct ScanOptions {
     pub categories: Vec<Category>,
@@ -26,7 +26,8 @@ pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
         // Return empty report for --list mode
         Ok(ScanReport::new())
     } else {
-        let report = scan_categories(&options.categories, &options.roots, options.verbose, exclude)?;
+        let report =
+            scan_categories(&options.categories, &options.roots, options.verbose, exclude)?;
         print_report(&report, &options);
         Ok(report)
     }
@@ -47,10 +48,8 @@ fn scan_categories(
     ];
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> = scanners
-        .into_iter()
-        .filter(|scanner| categories.contains(&scanner.category()))
-        .collect();
+    let filtered_scanners: Vec<_> =
+        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
 
     // Run scanners in parallel
     let results: Result<Vec<_>, AppError> = filtered_scanners
@@ -84,10 +83,8 @@ fn list_targets(
     ];
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> = scanners
-        .into_iter()
-        .filter(|scanner| categories.contains(&scanner.category()))
-        .collect();
+    let filtered_scanners: Vec<_> =
+        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
 
     // Run scanners in parallel for listing
     let results: Result<Vec<_>, AppError> = filtered_scanners
