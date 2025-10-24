@@ -1,72 +1,85 @@
-# rs-cli-tmpl
+# pure
 
-`rs-cli-tmpl` is a reference template for building Rust-based command line tools with a clean,
-layered architecture. It demonstrates how to separate concerns across the CLI interface,
-application commands, pure core logic, and I/O abstractions so new projects can start from a
-well-tested foundation.
+`pure` is a macOS-focused command line cleaner designed for developers and power users. It scans
+common cache locations, log directories, Homebrew artifacts, and other disposable files before
+you commit to deletion. Safety comes first: every run starts with a dry-run scan, and nothing is
+removed without an explicit confirmation or the `-y/--yes` flag.
 
-## Architectural Highlights
+## Features
 
-- **Three-tier structure** &mdash; `src/main.rs` handles CLI parsing, `src/commands.rs` wires
-  dependencies and user messaging, and `src/core/` keeps business rules testable via the
-  `Execute` trait.
-- **I/O abstraction** &mdash; `src/storage.rs` defines a `Storage` trait and a `FilesystemStorage`
-  implementation rooted at `~/.config/rs-cli-tmpl`, making it easy to swap storage backends.
-- **Robust testing strategy** &mdash; unit tests live next to their modules, `src/core/test_support.rs`
-  offers a `MockStorage` for core logic tests, and the `tests/` directory provides integration
-  suites for both the library API and the CLI binary.
+- **Dry-run by default** – `pure scan` reports what can be removed and how much space each
+  category represents.
+- **Category-aware cleaning** – Target development caches, system caches, logs, Homebrew
+  artefacts, browser caches, or the trash individually or all at once.
+- **Interactive deletion** – `pure run` without flags lets you choose categories to delete
+  interactively before the final confirmation prompt.
+- **Persistent exclusions** – Configure glob-style exclusions (e.g. `~/projects/app/.venv`) via
+  `pure config --add-exclude` so trusted paths are never touched.
+- **macOS aware** – Looks in standard macOS locations such as `~/Library/Caches`, Safari and
+  Chrome cache folders, and the user trash.
 
-The template ships with minimal sample commands (`add`, `list`, and `delete`) that show how to
-thread dependencies through each layer. Replace or extend them with your own domain logic while
-reusing the same structure.
-
-## Storage Layout
-
-The template stores items under `~/.config/rs-cli-tmpl/<id>/item.txt`. For example, after running `rs-cli-tmpl add my-item --content '...'`:
-
-```text
-~/.config/rs-cli-tmpl/
-  my-item/
-    item.txt
-```
-
-## Quick Start
+## Installation
 
 ```bash
 cargo install --path .
-# or
-cargo build --release
 ```
 
-The optimized binary will be created at `target/release/rs-cli-tmpl`.
+The release binary will be available at `target/release/pure`.
 
-## Development Commands
+## Usage
 
-- `cargo build` &mdash; build a debug binary.
-- `cargo build --release` &mdash; build the optimized release binary.
-- `cargo fmt` &mdash; format code using rustfmt.
-- `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings` &mdash; format check and lint with clippy.
-- `RUST_TEST_THREADS=1 cargo test --all-targets --all-features` &mdash; run all tests.
-- `cargo fetch --locked` &mdash; pre-fetch dependencies.
+```bash
+pure scan --all              # scan every category (default behaviour)
+pure scan --type dev -v      # detailed list of development caches within the current project
+pure run                     # scan, pick categories interactively, then confirm before deleting
+pure run --type logs -y      # delete log files without prompting for confirmation
+pure config --add-exclude ~/projects/app/.venv  # persistently ignore a virtual environment
+pure config --path           # show where the configuration file is stored
+```
 
-## Testing Culture
+### Categories
 
-- **Unit Tests**: Live alongside their modules inside `src/`, covering helper utilities and
-  filesystem boundaries.
-- **Core Logic Tests**: Use the mock storage in `src/core/test_support.rs` to exercise the
-  command implementations without touching the real filesystem.
-- **Integration Tests**: Located in the `tests/` directory. Separate crates cover the public
-  library API (`tests/commands_api.rs`) and CLI workflows (`tests/cli_commands.rs`,
-  `tests/cli_flow.rs`). Shared fixtures live in `tests/common/mod.rs`.
+| Category  | Description (examples) |
+|-----------|------------------------|
+| `dev`     | Development caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `target`, `.venv`, and `DerivedData`. |
+| `system`  | macOS system caches located under `~/Library/Caches` and `/Library/Caches`. |
+| `logs`    | Log directories including `~/Library/Logs` and `/var/log`. |
+| `brew`    | Homebrew caches and build artefacts. |
+| `browser` | Safari, Chrome, and Firefox cache directories. |
+| `trash`   | The user trash at `~/.Trash`. |
 
-Run `cargo test` regularly&mdash;filesystem-heavy tests rely on the `serial_test` crate to avoid race
-conditions.
+### Safety Model
 
-## Adapting the Template
+1. **Transparency** – Scans always show the total reclaimable size per category. Use
+   `--verbose` for individual items.
+2. **Control** – Restrict actions with `--type <category>`, `--all`, or the interactive
+   prompt in `pure run`.
+3. **Confirmation** – Destructive actions require confirmation unless `-y/--yes` is supplied.
+4. **Exclusions** – Add permanent exclude globs to `~/.config/pure/config.toml` (or the
+   platform-specific config directory). Exclusions are respected during scanning and deletion.
 
-1. Replace the sample commands in `src/core/` with your own business logic.
-2. Extend `src/commands.rs` to wire new dependencies and expose public APIs.
-3. Update the CLI definitions in `src/main.rs` to match your command surface.
-4. Refresh the integration tests and documentation to describe the new behavior.
+### Configuration File
 
-Happy hacking!
+`pure` stores configuration in `~/.config/pure/config.toml` (or the directory pointed to by
+`$XDG_CONFIG_HOME`). The structure is intentionally simple:
+
+```toml
+exclude = [
+  "~/projects/app/.venv",
+  "~/experiments/big-dataset"
+]
+```
+
+Use `pure config --edit` to open the file in your `$EDITOR` or `$VISUAL` editor. The configuration
+file is created on demand if it does not already exist.
+
+## Development
+
+Useful commands when working on the project:
+
+- `cargo fmt --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `RUST_TEST_THREADS=1 cargo test --all-targets --all-features`
+
+The integration tests rely on temporary directories and set `HOME`/`XDG_CONFIG_HOME` to avoid
+mutating your real environment.

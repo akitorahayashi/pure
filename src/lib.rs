@@ -1,9 +1,8 @@
-//! Library entry point exposing the core command handlers.
+//! Library entry point for the pure CLI.
 
 pub mod commands;
+pub mod config;
 pub mod error;
-
-mod core;
-mod storage;
-
-pub use commands::{add, delete, list};
+pub mod model;
+pub mod scanner;
+pub mod utils;
