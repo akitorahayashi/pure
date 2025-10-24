@@ -47,18 +47,21 @@ pub fn resolve_roots_with_current(explicit: &[PathBuf], current: bool) -> Vec<Pa
 
 pub fn is_excluded(path: &Path, exclude: Option<&globset::GlobSet>) -> bool {
     if let Some(set) = exclude {
-        let candidate = if path.is_absolute() {
-            path.to_string_lossy().to_string()
-        } else {
-            match std::env::current_dir() {
-                Ok(cwd) => {
-                    let joined = cwd.join(path);
-                    joined.to_string_lossy().to_string()
-                }
-                Err(_) => path.to_string_lossy().to_string(),
+        if path.is_absolute() {
+            return set.is_match(path);
+        }
+
+        match std::env::current_dir() {
+            Ok(cwd) => set.is_match(cwd.join(path)),
+            Err(e) => {
+                eprintln!(
+                    "Warning: could not get current directory to check exclusion for relative path {}: {}",
+                    path.display(),
+                    e
+                );
+                false
             }
-        };
-        set.is_match(&candidate)
+        }
     } else {
         false
     }
@@ -115,20 +118,16 @@ pub fn safe_remove_dir_all(
     exclude: Option<&globset::GlobSet>,
     verbose: bool,
 ) -> Result<(), AppError> {
-    // Collect entries to process, we'll process them in reverse order (deepest first)
-    let mut entries_to_process = Vec::new();
-    
-    let walker = WalkDir::new(path)
-        .into_iter()
-        .collect::<Vec<_>>();
-    
-    // Process in reverse order (deepest directories first)
-    for entry_result in walker.iter().rev() {
+    let mut files_to_remove = Vec::new();
+    let mut dirs_to_remove = Vec::new();
+
+    let mut walker = WalkDir::new(path).into_iter();
+    while let Some(entry_result) = walker.next() {
         let entry = match entry_result {
             Ok(entry) => entry,
             Err(err) => {
                 if verbose {
-                    eprintln!("Skipping {:?}: {}", err.path(), err);
+                    eprintln!("Skipping due to error: {}", err);
                 }
                 continue;
             }
@@ -136,27 +135,42 @@ pub fn safe_remove_dir_all(
 
         let entry_path = entry.path();
         if is_excluded(entry_path, exclude) {
+            if entry.file_type().is_dir() {
+                walker.skip_current_dir();
+            }
             continue;
         }
 
-        entries_to_process.push(entry_path.to_path_buf());
-    }
-    
-    // Now remove entries (already in reverse depth order)
-    for entry_path in entries_to_process {
-        if entry_path.is_file() {
-            if let Err(err) = fs::remove_file(&entry_path)
-                && err.kind() != io::ErrorKind::NotFound
-            {
-                return Err(AppError::Io(err));
-            }
-        } else if entry_path.is_dir() {
-            if let Err(err) = fs::remove_dir(&entry_path)
-                && err.kind() != io::ErrorKind::NotFound
-            {
-                return Err(AppError::Io(err));
-            }
+        if entry.file_type().is_file() {
+            files_to_remove.push(entry.into_path());
+        } else if entry.file_type().is_dir() {
+            dirs_to_remove.push(entry.into_path());
         }
     }
+
+    // Remove files first.
+    for file in &files_to_remove {
+        match fs::remove_file(file) {
+            Ok(()) => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) => return Err(AppError::Io(err)),
+        }
+    }
+
+    // Remove directories, deepest first.
+    dirs_to_remove.sort_by_key(|p| std::cmp::Reverse(p.as_os_str().len()));
+    for dir in &dirs_to_remove {
+        match fs::remove_dir(dir) {
+            Ok(()) => {}
+            Err(err)
+                if err.kind() == io::ErrorKind::NotFound
+                    || err.kind() == io::ErrorKind::DirectoryNotEmpty =>
+            {
+                // Not empty can happen if it contains an excluded item.
+            }
+            Err(err) => return Err(AppError::Io(err)),
+        }
+    }
+
     Ok(())
 }

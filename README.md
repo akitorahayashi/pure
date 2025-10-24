@@ -43,7 +43,7 @@ pure config --path                        # show where the configuration file is
 
 | Category  | Description (examples) |
 |-----------|------------------------|
-| `xcode`   | Xcode build artifacts including `DerivedData` and `build` directories. |
+| `xcode`   | Xcode build artifacts including `DerivedData` directories. |
 | `python`  | Python caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `.venv`, and `.uv-cache`. |
 | `rust`    | Rust build artifacts in `target` directories. |
 | `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
