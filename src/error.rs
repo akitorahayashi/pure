@@ -1,53 +1,37 @@
-use std::error::Error;
-use std::fmt::{self, Display};
 use std::io;
 
-/// Library-wide error type capturing domain-neutral and underlying I/O failures.
-#[derive(Debug)]
+use thiserror::Error;
+
+/// Application-wide error type for the pure CLI.
+#[derive(Debug, Error)]
 pub enum AppError {
-    Io(io::Error),
-    /// Configuration or environment issue that prevents command execution.
-    ConfigError(String),
-    /// Raised when a requested item cannot be located in storage.
-    ItemNotFound(String),
-}
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
 
-impl Display for AppError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AppError::Io(err) => write!(f, "{}", err),
-            AppError::ConfigError(message) => write!(f, "{message}"),
-            AppError::ItemNotFound(id) => write!(f, "Item '{id}' was not found"),
-        }
-    }
-}
+    #[error("Configuration error: {0}")]
+    Config(String),
 
-impl Error for AppError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            AppError::Io(err) => Some(err),
-            AppError::ConfigError(_) | AppError::ItemNotFound(_) => None,
-        }
-    }
-}
+    #[error("Unknown category '{0}'")]
+    InvalidCategory(String),
 
-impl From<io::Error> for AppError {
-    fn from(value: io::Error) -> Self {
-        AppError::Io(value)
-    }
+    #[error("Operation cancelled by user")]
+    Cancelled,
+
+    #[error("Failed to launch editor: {0}")]
+    Editor(String),
+
+    #[error("Failed to parse configuration: {0}")]
+    ConfigParse(#[from] toml::de::Error),
+
+    #[error("Failed to write configuration: {0}")]
+    ConfigSerialize(#[from] toml::ser::Error),
+
+    #[error("Invalid exclude pattern: {0}")]
+    Glob(#[from] globset::Error),
 }
 
 impl AppError {
-    pub(crate) fn config_error<S: Into<String>>(message: S) -> Self {
-        AppError::ConfigError(message.into())
-    }
-
-    /// Provide an `io::ErrorKind`-like view for callers expecting legacy behavior.
-    pub fn kind(&self) -> io::ErrorKind {
-        match self {
-            AppError::Io(err) => err.kind(),
-            AppError::ConfigError(_) => io::ErrorKind::InvalidInput,
-            AppError::ItemNotFound(_) => io::ErrorKind::NotFound,
-        }
+    pub fn config<S: Into<String>>(msg: S) -> Self {
+        AppError::Config(msg.into())
     }
 }
