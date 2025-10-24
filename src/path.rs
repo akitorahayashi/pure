@@ -115,9 +115,16 @@ pub fn safe_remove_dir_all(
     exclude: Option<&globset::GlobSet>,
     verbose: bool,
 ) -> Result<(), AppError> {
-    let mut walker = WalkDir::new(path).into_iter();
-    while let Some(entry) = walker.next() {
-        let entry = match entry {
+    // Collect entries to process, we'll process them in reverse order (deepest first)
+    let mut entries_to_process = Vec::new();
+    
+    let walker = WalkDir::new(path)
+        .into_iter()
+        .collect::<Vec<_>>();
+    
+    // Process in reverse order (deepest directories first)
+    for entry_result in walker.iter().rev() {
+        let entry = match entry_result {
             Ok(entry) => entry,
             Err(err) => {
                 if verbose {
@@ -129,22 +136,22 @@ pub fn safe_remove_dir_all(
 
         let entry_path = entry.path();
         if is_excluded(entry_path, exclude) {
-            if entry.file_type().is_dir() {
-                walker.skip_current_dir();
-            }
             continue;
         }
 
-        if entry.file_type().is_file() {
-            if let Err(err) = fs::remove_file(entry_path)
+        entries_to_process.push(entry_path.to_path_buf());
+    }
+    
+    // Now remove entries (already in reverse depth order)
+    for entry_path in entries_to_process {
+        if entry_path.is_file() {
+            if let Err(err) = fs::remove_file(&entry_path)
                 && err.kind() != io::ErrorKind::NotFound
             {
                 return Err(AppError::Io(err));
             }
-        } else if entry.file_type().is_dir() {
-            // Remove directory after its contents are removed
-            // WalkDir visits in depth-first order, so subdirs are removed first
-            if let Err(err) = fs::remove_dir(entry_path)
+        } else if entry_path.is_dir() {
+            if let Err(err) = fs::remove_dir(&entry_path)
                 && err.kind() != io::ErrorKind::NotFound
             {
                 return Err(AppError::Io(err));
