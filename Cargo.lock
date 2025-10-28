@@ -818,6 +818,7 @@ dependencies = [
  "predicates",
  "rayon",
  "serde",
+ "serde_json",
  "serial_test",
  "tempfile",
  "thiserror",

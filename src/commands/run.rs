@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -78,7 +79,24 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     delete_items(&fs_items_to_delete, exclude)?;
 
     if selected_categories.contains(&Category::Docker) && !options.current {
-        run_docker_cleanup(options.verbose)?;
+        match run_docker_cleanup(options.verbose) {
+            Ok(()) => {}
+            Err(err) => {
+                // Skip if Docker CLI is missing; otherwise propagate
+                if let Some(io_err) = err.source().and_then(|e| e.downcast_ref::<std::io::Error>())
+                {
+                    if io_err.kind() == std::io::ErrorKind::NotFound {
+                        if options.verbose {
+                            eprintln!("Docker CLI not available; skipping Docker cleanup.");
+                        }
+                    } else {
+                        return Err(err);
+                    }
+                } else {
+                    return Err(err);
+                }
+            }
+        }
     }
 
     println!(

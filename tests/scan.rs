@@ -111,16 +111,23 @@ fn scan_default_includes_docker_category() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(stdout.contains("Found cleanup targets"));
 
-    let docker_markers = [
-        "Docker",
-        "Unused images",
-        "Stopped containers",
-        "Dangling volumes",
-        "Unused networks",
-        "Build cache",
-    ];
+    let docker_available = std::process::Command::new("docker")
+        .arg("info")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
 
-    if !docker_markers.iter().any(|marker| stdout.contains(marker)) {
-        // Docker may be unavailable locally; treat absence as acceptable.
+    if docker_available {
+        assert!(
+            stdout.contains("Docker"),
+            "Expected Docker category in output when Docker is available."
+        );
+    } else {
+        assert!(
+            !stdout.contains("Docker"),
+            "Expected no Docker category in output when Docker is not available."
+        );
     }
 }
