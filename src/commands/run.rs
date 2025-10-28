@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::commands::scan::get_scanners;
 use crate::config::Config;
+use crate::docker_cleanup::{run_docker_cleanup, scan_docker};
 use crate::error::AppError;
 use crate::format::format_bytes;
 use crate::model::{Category, ScanItem, ScanReport};
@@ -71,7 +72,14 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let items_to_delete: Vec<ScanItem> =
         subset.categories.values().flat_map(|report| &report.items).cloned().collect();
 
-    delete_items(&items_to_delete, exclude)?;
+    let fs_items_to_delete: Vec<ScanItem> =
+        items_to_delete.into_iter().filter(|item| item.category != Category::Docker).collect();
+
+    delete_items(&fs_items_to_delete, exclude)?;
+
+    if selected_categories.contains(&Category::Docker) && !options.current {
+        run_docker_cleanup(options.verbose)?;
+    }
 
     println!(
         "Attempted to delete {} across {} categor(ies).",
@@ -183,11 +191,17 @@ fn scan_categories_for_run(
     current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
+    let docker_scan = categories.contains(&Category::Docker);
+    let fs_categories: Vec<_> =
+        categories.iter().copied().filter(|category| *category != Category::Docker).collect();
+
     let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> =
-        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
+    let filtered_scanners: Vec<_> = scanners
+        .into_iter()
+        .filter(|scanner| fs_categories.contains(&scanner.category()))
+        .collect();
 
     // Run scanners in parallel
     let results: Result<Vec<_>, AppError> = filtered_scanners
@@ -202,6 +216,13 @@ fn scan_categories_for_run(
     let mut report = ScanReport::new();
     for (category, items) in results? {
         report.add_items(category, items);
+    }
+
+    if docker_scan && !current {
+        let docker_items = scan_docker(verbose)?;
+        if !docker_items.is_empty() {
+            report.add_items(Category::Docker, docker_items);
+        }
     }
 
     Ok(report)

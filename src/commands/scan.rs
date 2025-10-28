@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::config::Config;
+use crate::docker_cleanup::{list_targets_docker, scan_docker};
 use crate::error::AppError;
 use crate::format::format_bytes;
 use crate::model::{Category, ScanReport};
@@ -47,11 +48,17 @@ fn scan_categories(
     current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<ScanReport, AppError> {
+    let docker_scan = categories.contains(&Category::Docker);
+    let fs_categories: Vec<_> =
+        categories.iter().copied().filter(|category| *category != Category::Docker).collect();
+
     let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> =
-        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
+    let filtered_scanners: Vec<_> = scanners
+        .into_iter()
+        .filter(|scanner| fs_categories.contains(&scanner.category()))
+        .collect();
 
     // Run scanners in parallel
     let results: Result<Vec<_>, AppError> = filtered_scanners
@@ -68,6 +75,13 @@ fn scan_categories(
         report.add_items(category, items);
     }
 
+    if docker_scan && !current {
+        let docker_items = scan_docker(verbose)?;
+        if !docker_items.is_empty() {
+            report.add_items(Category::Docker, docker_items);
+        }
+    }
+
     Ok(report)
 }
 
@@ -77,11 +91,17 @@ fn list_targets(
     current: bool,
     exclude: Option<globset::GlobSet>,
 ) -> Result<BTreeMap<Category, Vec<String>>, AppError> {
+    let docker_list = categories.contains(&Category::Docker);
+    let fs_categories: Vec<_> =
+        categories.iter().copied().filter(|category| *category != Category::Docker).collect();
+
     let scanners = get_scanners(exclude.clone(), current);
 
     // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> =
-        scanners.into_iter().filter(|scanner| categories.contains(&scanner.category())).collect();
+    let filtered_scanners: Vec<_> = scanners
+        .into_iter()
+        .filter(|scanner| fs_categories.contains(&scanner.category()))
+        .collect();
 
     // Run scanners in parallel for listing
     let results: Result<Vec<_>, AppError> = filtered_scanners
@@ -96,6 +116,13 @@ fn list_targets(
     let mut result_map = BTreeMap::new();
     for (category, targets) in results? {
         result_map.insert(category, targets);
+    }
+
+    if docker_list && !current {
+        let docker_targets = list_targets_docker()?;
+        if !docker_targets.is_empty() {
+            result_map.insert(Category::Docker, docker_targets);
+        }
     }
 
     Ok(result_map)

@@ -48,6 +48,7 @@ pure config --path                        # show where the configuration file is
 | `rust`    | Rust build artifacts in `target` directories. |
 | `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
 | `brew`    | Homebrew caches and build artifacts. Note: Skipped when using `--current` option. |
+| `docker`  | Docker cache and unused data (`image prune -a`, `container prune`, `volume prune`, `network prune`, `builder prune -a`). Skipped when using the `--current` option. |
 
 ### Safety Model
 
