@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "serena": {
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "ide-assistant",
+        "--enable-web-dashboard",
+        "false",
+        "--enable-gui-log-window",
+        "false",
+        "--log-level",
+        "CRITICAL"
+      ],
+      "command": "uvx",
+      "description": "Professional coding agent with semantic tools for intelligent codebase analysis",
+      "type": "stdio"
+    }
+  }
+}

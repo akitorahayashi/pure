@@ -68,3 +68,66 @@ fn scan_default_includes_brew_category() {
     // Default scan should include brew (even if no targets found, category should be checked)
     cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
 }
+
+#[test]
+fn scan_current_skips_docker_category() {
+    let temp = assert_fs::TempDir::new().unwrap();
+
+    let original_dir = env::current_dir().unwrap();
+    env::set_current_dir(temp.path()).unwrap();
+
+    let mut cmd = command();
+    cmd.env("HOME", temp.path())
+        .env("XDG_CONFIG_HOME", temp.child("config").path())
+        .arg("scan")
+        .arg("--current")
+        .arg("--list");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Found cleanup targets"))
+        .stdout(predicate::str::contains("Docker").not())
+        .stdout(predicate::str::contains("Unused images").not())
+        .stdout(predicate::str::contains("Stopped containers").not())
+        .stdout(predicate::str::contains("Dangling volumes").not())
+        .stdout(predicate::str::contains("Unused networks").not())
+        .stdout(predicate::str::contains("Build cache").not());
+
+    env::set_current_dir(original_dir).unwrap();
+}
+
+#[test]
+fn scan_default_includes_docker_category() {
+    let temp = assert_fs::TempDir::new().unwrap();
+
+    let mut cmd = command();
+    cmd.env("HOME", temp.path())
+        .env("XDG_CONFIG_HOME", temp.child("config").path())
+        .arg("scan")
+        .arg("--list")
+        .arg(temp.path());
+
+    let assert = cmd.assert().success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(stdout.contains("Found cleanup targets"));
+
+    let docker_available = std::process::Command::new("docker")
+        .arg("info")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+
+    if docker_available {
+        assert!(
+            stdout.contains("Docker"),
+            "Expected Docker category in output when Docker is available."
+        );
+    } else {
+        assert!(
+            !stdout.contains("Docker"),
+            "Expected no Docker category in output when Docker is not available."
+        );
+    }
+}

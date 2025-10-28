@@ -70,7 +70,7 @@ enum Commands {
 
 #[derive(Args)]
 struct ScanArgs {
-    /// Restrict the scan to specific categories (e.g. python, nodejs, rust, xcode, brew).
+    /// Restrict the scan to specific categories (e.g. python, nodejs, rust, xcode, brew, docker).
     #[arg(short = 't', long = "type", value_name = "CATEGORY", action = ArgAction::Append, conflicts_with = "all")]
     categories: Vec<Category>,
 

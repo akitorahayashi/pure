@@ -9,11 +9,18 @@ pub enum Category {
     Rust,
     Nodejs,
     Brew,
+    Docker,
 }
 
 impl Category {
-    pub const ALL: [Category; 5] =
-        [Category::Xcode, Category::Python, Category::Rust, Category::Nodejs, Category::Brew];
+    pub const ALL: [Category; 6] = [
+        Category::Xcode,
+        Category::Python,
+        Category::Rust,
+        Category::Nodejs,
+        Category::Brew,
+        Category::Docker,
+    ];
 
     pub fn from_name(value: &str) -> Option<Self> {
         match value.to_ascii_lowercase().as_str() {
@@ -22,6 +29,7 @@ impl Category {
             "rust" => Some(Category::Rust),
             "nodejs" => Some(Category::Nodejs),
             "brew" => Some(Category::Brew),
+            "docker" => Some(Category::Docker),
             _ => None,
         }
     }
@@ -33,6 +41,7 @@ impl Category {
             Category::Rust => "rust",
             Category::Nodejs => "nodejs",
             Category::Brew => "brew",
+            Category::Docker => "docker",
         }
     }
 
@@ -43,6 +52,7 @@ impl Category {
             Category::Rust => "Rust",
             Category::Nodejs => "NodeJS",
             Category::Brew => "Homebrew",
+            Category::Docker => "Docker",
         }
     }
 }
