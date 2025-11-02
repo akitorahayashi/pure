@@ -2,6 +2,7 @@ use std::io;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+use byte_unit::Byte;
 use serde_json;
 
 use crate::error::AppError;
@@ -50,10 +51,12 @@ pub fn scan_docker(verbose: bool) -> Result<Vec<ScanItem>, AppError> {
         if line.is_empty() {
             continue;
         }
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line)
-            && let Some(reclaimable) = json.get("Reclaimable").and_then(|v| v.as_u64())
-        {
-            total = total.saturating_add(reclaimable);
+        if let Some(size) = serde_json::from_str::<serde_json::Value>(line).ok().and_then(|json| {
+            let reclaimable_str = json.get("Reclaimable")?.as_str()?;
+            let size_str = reclaimable_str.split(' ').next()?;
+            size_str.parse::<Byte>().ok().map(|b| b.as_u64())
+        }) {
+            total = total.saturating_add(size);
         }
     }
 
