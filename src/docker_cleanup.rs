@@ -51,12 +51,12 @@ pub fn scan_docker(verbose: bool) -> Result<Vec<ScanItem>, AppError> {
         if line.is_empty() {
             continue;
         }
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line)
-            && let Some(reclaimable_str) = json.get("Reclaimable").and_then(|v| v.as_str())
-            && let Some(size_str) = reclaimable_str.split(' ').next()
-            && let Ok(byte) = size_str.parse::<Byte>()
-        {
-            total = total.saturating_add(byte.as_u64());
+        if let Some(size) = serde_json::from_str::<serde_json::Value>(line).ok().and_then(|json| {
+            let reclaimable_str = json.get("Reclaimable")?.as_str()?;
+            let size_str = reclaimable_str.split(' ').next()?;
+            size_str.parse::<Byte>().ok().map(|b| b.as_u64())
+        }) {
+            total = total.saturating_add(size);
         }
     }
 
