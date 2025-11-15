@@ -1,7 +1,7 @@
 use super::CategoryScanner;
 use crate::error::AppError;
 use crate::model::{Category, ItemKind, ScanItem};
-use crate::path::{is_excluded, path_size};
+use crate::path::is_excluded;
 use dirs_next as dirs;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -33,47 +33,30 @@ impl XcodeScanner {
         paths
     }
 
-    fn add_path(&self, path: &Path, verbose: bool, items: &mut Vec<ScanItem>) {
+    fn add_path(&self, path: &Path, items: &mut Vec<ScanItem>) {
         if is_excluded(path, self.exclude.as_ref()) {
             return;
         }
 
-        match path_size(path, self.exclude.as_ref(), verbose) {
-            Ok(size) => {
-                if size == 0 {
-                    return;
-                }
-                let kind = if path.is_file() { ItemKind::File } else { ItemKind::Directory };
-                items.push(ScanItem {
-                    category: Category::Xcode,
-                    path: path.to_path_buf(),
-                    size,
-                    kind,
-                });
-            }
-            Err(err) => {
-                if verbose {
-                    eprintln!("Skipping {}: {}", path.display(), err);
-                }
-            }
-        }
+        let kind = if path.is_file() { ItemKind::File } else { ItemKind::Directory };
+        items.push(ScanItem { category: Category::Xcode, path: path.to_path_buf(), size: 0, kind });
     }
 
-    fn collect_swiftpm_artifacts(&self, parent: &Path, verbose: bool, items: &mut Vec<ScanItem>) {
+    fn collect_swiftpm_artifacts(&self, parent: &Path, items: &mut Vec<ScanItem>) {
         const ARTIFACTS: &[&str] = &[".build", ".swiftpm", "Package.resolved"];
         for artifact in ARTIFACTS {
             let artifact_path = parent.join(artifact);
             if artifact_path.exists() {
-                self.add_path(&artifact_path, verbose, items);
+                self.add_path(&artifact_path, items);
             }
         }
     }
 
-    fn scan_global_caches(&self, verbose: bool) -> Vec<ScanItem> {
+    fn scan_global_caches(&self) -> Vec<ScanItem> {
         let mut items = Vec::new();
         for path in Self::global_safe_paths() {
             if path.exists() {
-                self.add_path(&path, verbose, &mut items);
+                self.add_path(&path, &mut items);
             }
         }
         items
@@ -111,7 +94,7 @@ impl XcodeScanner {
                 let file_name = entry.file_name().to_string_lossy();
 
                 if entry.file_type().is_dir() && file_name == "DerivedData" {
-                    self.add_path(path, verbose, &mut items);
+                    self.add_path(path, &mut items);
                     walker.skip_current_dir();
                     continue;
                 }
@@ -121,7 +104,7 @@ impl XcodeScanner {
                     && let Some(parent) = path.parent()
                     && processed_packages.insert(parent.to_path_buf())
                 {
-                    self.collect_swiftpm_artifacts(parent, verbose, &mut items);
+                    self.collect_swiftpm_artifacts(parent, &mut items);
                 }
             }
         }
@@ -201,7 +184,7 @@ impl CategoryScanner for XcodeScanner {
     fn scan(&self, roots: &[PathBuf], verbose: bool) -> Result<Vec<ScanItem>, AppError> {
         let mut items = self.scan_local_projects(roots, verbose);
         if !self.current {
-            let mut global_items = self.scan_global_caches(verbose);
+            let mut global_items = self.scan_global_caches();
             items.append(&mut global_items);
         }
         Ok(items)

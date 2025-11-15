@@ -1,15 +1,16 @@
 use std::error::Error;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use crate::commands::scan::get_scanners;
+use crate::commands::scan::scan_categories;
 use crate::config::Config;
-use crate::docker_cleanup::{run_docker_cleanup, scan_docker};
+use crate::docker_cleanup::run_docker_cleanup;
 use crate::error::AppError;
 use crate::format::format_bytes;
 use crate::model::{Category, ScanItem, ScanReport};
 use crate::path::{display_path, is_excluded, safe_remove_dir_all};
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
 pub struct RunOptions {
@@ -25,7 +26,8 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let config = Config::load()?;
     let exclude = config.compile_excludes()?;
 
-    let scan_categories = if options.all {
+    let debug_logging = std::env::var_os("PURE_DEBUG").is_some();
+    let requested_categories = if options.all {
         Category::ALL.to_vec()
     } else if let Some(explicit) = &options.categories {
         explicit.clone()
@@ -33,13 +35,18 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         Category::ALL.to_vec()
     };
 
-    let report = scan_categories_for_run(
-        &scan_categories,
+    let progress = Arc::new(MultiProgress::new());
+    let report = scan_categories(
+        &requested_categories,
         &options.roots,
         options.verbose,
         options.current,
         exclude.clone(),
+        &progress,
     )?;
+    if debug_logging {
+        eprintln!("[pure::run] finished scan phase");
+    }
 
     let selected_categories = if options.all {
         Category::ALL.to_vec()
@@ -64,10 +71,16 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     }
 
     print_summary(&subset, options.verbose);
+    if debug_logging {
+        eprintln!("[pure::run] printed summary, awaiting confirmation");
+    }
 
     if !options.assume_yes && !confirm_deletion(subset.total_size())? {
         println!("Aborted. No files were deleted.");
         return Ok(());
+    }
+    if debug_logging {
+        eprintln!("[pure::run] confirmation obtained");
     }
 
     let items_to_delete: Vec<ScanItem> =
@@ -76,27 +89,24 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let fs_items_to_delete: Vec<ScanItem> =
         items_to_delete.into_iter().filter(|item| item.category != Category::Docker).collect();
 
-    delete_items(&fs_items_to_delete, exclude)?;
+    let needs_docker_cleanup = selected_categories.contains(&Category::Docker) && !options.current;
 
-    if selected_categories.contains(&Category::Docker) && !options.current {
-        match run_docker_cleanup(options.verbose) {
-            Ok(()) => {}
-            Err(err) => {
-                // Skip if Docker CLI is missing; otherwise propagate
-                if let Some(io_err) = err.source().and_then(|e| e.downcast_ref::<std::io::Error>())
-                {
-                    if io_err.kind() == std::io::ErrorKind::NotFound {
-                        if options.verbose {
-                            eprintln!("Docker CLI not available; skipping Docker cleanup.");
-                        }
-                    } else {
-                        return Err(err);
-                    }
-                } else {
-                    return Err(err);
-                }
-            }
-        }
+    if debug_logging {
+        eprintln!("[pure::run] starting deletion (docker_cleanup={})", needs_docker_cleanup);
+    }
+    if needs_docker_cleanup {
+        let delete_progress = Arc::clone(&progress);
+        let (delete_result, docker_result) = rayon::join(
+            || delete_items(&fs_items_to_delete, exclude.clone(), &delete_progress),
+            || run_docker_cleanup_with_handling(options.verbose),
+        );
+        delete_result?;
+        docker_result?;
+    } else {
+        delete_items(&fs_items_to_delete, exclude, &progress)?;
+    }
+    if debug_logging {
+        eprintln!("[pure::run] deletion phase complete");
     }
 
     println!(
@@ -106,6 +116,23 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     );
 
     Ok(())
+}
+
+fn run_docker_cleanup_with_handling(verbose: bool) -> Result<(), AppError> {
+    match run_docker_cleanup(verbose) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if let Some(io_err) = err.source().and_then(|e| e.downcast_ref::<std::io::Error>())
+                && io_err.kind() == std::io::ErrorKind::NotFound
+            {
+                if verbose {
+                    eprintln!("Docker CLI not available; skipping Docker cleanup.");
+                }
+                return Ok(());
+            }
+            Err(err)
+        }
+    }
 }
 
 fn prompt_for_categories(report: &ScanReport) -> Result<Vec<Category>, AppError> {
@@ -202,51 +229,11 @@ fn print_summary(report: &ScanReport, verbose: bool) {
     println!("Total to delete: {}", format_bytes(report.total_size()));
 }
 
-fn scan_categories_for_run(
-    categories: &[Category],
-    roots: &[std::path::PathBuf],
-    verbose: bool,
-    current: bool,
+fn delete_items(
+    items: &[ScanItem],
     exclude: Option<globset::GlobSet>,
-) -> Result<ScanReport, AppError> {
-    let docker_scan = categories.contains(&Category::Docker);
-    let fs_categories: Vec<_> =
-        categories.iter().copied().filter(|category| *category != Category::Docker).collect();
-
-    let scanners = get_scanners(exclude.clone(), current);
-
-    // Filter scanners to only those requested
-    let filtered_scanners: Vec<_> = scanners
-        .into_iter()
-        .filter(|scanner| fs_categories.contains(&scanner.category()))
-        .collect();
-
-    // Run scanners in parallel
-    let results: Result<Vec<_>, AppError> = filtered_scanners
-        .par_iter()
-        .map(|scanner| {
-            let items = scanner.scan(roots, verbose)?;
-            Ok((scanner.category(), items))
-        })
-        .collect();
-
-    // Collect results into report
-    let mut report = ScanReport::new();
-    for (category, items) in results? {
-        report.add_items(category, items);
-    }
-
-    if docker_scan && !current {
-        let docker_items = scan_docker(verbose)?;
-        if !docker_items.is_empty() {
-            report.add_items(Category::Docker, docker_items);
-        }
-    }
-
-    Ok(report)
-}
-
-fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result<(), AppError> {
+    progress: &Arc<MultiProgress>,
+) -> Result<(), AppError> {
     use crate::model::ItemKind;
     use std::fs;
     use std::io;
@@ -255,50 +242,94 @@ fn delete_items(items: &[ScanItem], exclude: Option<globset::GlobSet>) -> Result
         return Ok(());
     }
 
-    // Helper function to check exclusions
-    // Create progress bar with light blue style
-    let pb = ProgressBar::new(items.len() as u64);
-    pb.set_style(
-        ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
-        )
-        .unwrap()
-        .progress_chars("##-"),
-    );
+    let pb = progress.add(ProgressBar::new(items.len() as u64));
+    pb.set_style(deletion_progress_style());
 
-    for item in items.iter() {
-        if is_excluded(&item.path, exclude.as_ref()) {
+    let exclude_ref = exclude.as_ref();
+    items.par_iter().try_for_each(|item| {
+        if is_excluded(&item.path, exclude_ref) {
             pb.inc(1);
-            continue;
+            return Ok(());
         }
 
-        // Update progress bar with current file
-        pb.set_message(format!(
-            "Deleting {} ({})",
-            display_path(item.path_str()),
-            format_bytes(item.size)
-        ));
+        pb.set_message(display_path(&item.path));
 
         match item.kind {
             ItemKind::Directory => {
-                if let Err(err) = safe_remove_dir_all(&item.path, exclude.as_ref(), false) {
-                    pb.finish_and_clear();
-                    return Err(err);
-                }
+                safe_remove_dir_all(&item.path, exclude_ref, false)?;
             }
-            ItemKind::File => {
-                if let Err(err) = fs::remove_file(&item.path)
-                    && err.kind() != io::ErrorKind::NotFound
-                {
-                    pb.finish_and_clear();
-                    return Err(AppError::Io(err));
-                }
-            }
+            ItemKind::File => match fs::remove_file(&item.path) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                Err(err) => return Err(AppError::Io(err)),
+            },
         }
 
         pb.inc(1);
+        Ok(())
+    })?;
+
+    pb.finish_and_clear();
+    let _ = progress.println(format!("{}/{} Deletion complete", items.len(), items.len()));
+    Ok(())
+}
+
+fn deletion_progress_style() -> ProgressStyle {
+    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6} {msg}")
+        .unwrap()
+        .progress_chars("=|-")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assert_fs::TempDir;
+    use assert_fs::prelude::*;
+
+    #[test]
+    fn delete_items_removes_files_and_directories() {
+        let temp = TempDir::new().unwrap();
+        let dir = temp.child("node_modules");
+        dir.child("lib").create_dir_all().unwrap();
+        dir.child("lib/index.js").write_str("console.log('cache');").unwrap();
+        let file = temp.child("cache.log");
+        file.write_str("hello").unwrap();
+
+        let items = vec![
+            ScanItem::directory(Category::Nodejs, dir.path().to_path_buf(), 0),
+            ScanItem::file(Category::Nodejs, file.path().to_path_buf(), 0),
+        ];
+
+        let progress = Arc::new(MultiProgress::new());
+        delete_items(&items, None, &progress).expect("deletion succeeds");
+
+        dir.assert(predicates::path::missing());
+        file.assert(predicates::path::missing());
     }
 
-    pb.finish_with_message("Deletion complete");
-    Ok(())
+    #[test]
+    fn delete_items_respects_exclusions() {
+        let temp = TempDir::new().unwrap();
+        let skip_dir = temp.child("skip");
+        skip_dir.create_dir_all().unwrap();
+        skip_dir.child("data.txt").write_str("cache").unwrap();
+        let remove_dir = temp.child("remove-me");
+        remove_dir.create_dir_all().unwrap();
+        remove_dir.child("data.txt").write_str("cache").unwrap();
+
+        let mut builder = globset::GlobSetBuilder::new();
+        builder.add(globset::Glob::new("**/skip/**").unwrap());
+        let exclude = Some(builder.build().unwrap());
+
+        let items = vec![
+            ScanItem::directory(Category::Nodejs, skip_dir.path().to_path_buf(), 0),
+            ScanItem::directory(Category::Nodejs, remove_dir.path().to_path_buf(), 0),
+        ];
+
+        let progress = Arc::new(MultiProgress::new());
+        delete_items(&items, exclude, &progress).expect("deletion succeeds");
+
+        skip_dir.assert(predicates::path::exists());
+        remove_dir.assert(predicates::path::missing());
+    }
 }

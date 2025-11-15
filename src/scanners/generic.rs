@@ -5,7 +5,7 @@ use walkdir::WalkDir;
 use super::CategoryScanner;
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
-use crate::path::{is_excluded, path_size};
+use crate::path::is_excluded;
 
 pub struct GenericScanner {
     category: Category,
@@ -56,8 +56,7 @@ impl CategoryScanner for GenericScanner {
                 if entry.file_type().is_dir() {
                     let name = entry.file_name().to_string_lossy();
                     if target_names.contains(name.as_ref()) {
-                        let size = path_size(path, self.exclude.as_ref(), verbose)?;
-                        items.push(ScanItem::directory(self.category, path.to_path_buf(), size));
+                        items.push(ScanItem::directory(self.category, path.to_path_buf(), 0));
                         walker.skip_current_dir();
                     }
                 }
