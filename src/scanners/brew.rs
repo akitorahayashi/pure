@@ -4,7 +4,7 @@ use dirs_next as dirs;
 
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
-use crate::path::{is_excluded, path_size};
+use crate::path::is_excluded;
 
 use super::CategoryScanner;
 
@@ -27,27 +27,14 @@ impl BrewScanner {
         paths
     }
 
-    fn collect_directories(
-        &self,
-        paths: Vec<PathBuf>,
-        verbose: bool,
-    ) -> Result<Vec<ScanItem>, AppError> {
+    fn collect_directories(&self, paths: Vec<PathBuf>) -> Result<Vec<ScanItem>, AppError> {
         let mut items = Vec::new();
         for path in paths {
             if is_excluded(&path, self.exclude.as_ref()) {
                 continue;
             }
             if path.exists() {
-                let size = match path_size(&path, self.exclude.as_ref(), verbose) {
-                    Ok(size) => size,
-                    Err(err) => {
-                        if verbose {
-                            eprintln!("Skipping {}: {}", path.display(), err);
-                        }
-                        continue;
-                    }
-                };
-                items.push(ScanItem::directory(Category::Brew, path, size));
+                items.push(ScanItem::directory(Category::Brew, path, 0));
             }
         }
         Ok(items)
@@ -55,8 +42,8 @@ impl BrewScanner {
 }
 
 impl CategoryScanner for BrewScanner {
-    fn scan(&self, _roots: &[PathBuf], verbose: bool) -> Result<Vec<ScanItem>, AppError> {
-        self.collect_directories(Self::brew_paths(), verbose)
+    fn scan(&self, _roots: &[PathBuf], _verbose: bool) -> Result<Vec<ScanItem>, AppError> {
+        self.collect_directories(Self::brew_paths())
     }
 
     fn category(&self) -> Category {

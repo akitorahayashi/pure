@@ -11,6 +11,10 @@ confirmation or the `-y/--yes` flag.
   category represents.
 - **Language-aware cleaning** – Target Python, NodeJS, Rust, Xcode, or Homebrew caches
   individually or all at once.
+- **Two-phase parallel engine** – Discovery runs separately from heavy I/O, so size calculation
+  and deletion can fully saturate available cores without freezing the UI.
+- **Responsive progress UI** – `pure scan`/`pure run` render `MultiProgress` spinners and bars that
+  reflect discovery, size calculation, and deletion progress in real time.
 - **Fast preview** – `pure scan --list` quickly shows what cleanup targets exist without
   calculating sizes.
 - **Interactive deletion** – `pure run` without flags lets you choose categories to delete
