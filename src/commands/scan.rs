@@ -171,7 +171,7 @@ pub fn get_scanners(
     current: bool,
 ) -> Vec<Box<dyn CategoryScanner>> {
     let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
-        Box::new(XcodeScanner::new(exclude.clone())),
+        Box::new(XcodeScanner::new(exclude.clone(), current)),
         Box::new(PythonScanner::new(exclude.clone())),
         Box::new(RustScanner::new(exclude.clone())),
         Box::new(NodejsScanner::new(exclude.clone())),
