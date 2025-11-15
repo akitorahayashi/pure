@@ -122,18 +122,15 @@ fn run_docker_cleanup_with_handling(verbose: bool) -> Result<(), AppError> {
     match run_docker_cleanup(verbose) {
         Ok(()) => Ok(()),
         Err(err) => {
-            if let Some(io_err) = err.source().and_then(|e| e.downcast_ref::<std::io::Error>()) {
-                if io_err.kind() == std::io::ErrorKind::NotFound {
-                    if verbose {
-                        eprintln!("Docker CLI not available; skipping Docker cleanup.");
-                    }
-                    Ok(())
-                } else {
-                    Err(err)
+            if let Some(io_err) = err.source().and_then(|e| e.downcast_ref::<std::io::Error>())
+                && io_err.kind() == std::io::ErrorKind::NotFound
+            {
+                if verbose {
+                    eprintln!("Docker CLI not available; skipping Docker cleanup.");
                 }
-            } else {
-                Err(err)
+                return Ok(());
             }
+            Err(err)
         }
     }
 }
@@ -255,6 +252,8 @@ fn delete_items(
             return Ok(());
         }
 
+        pb.set_message(display_path(&item.path));
+
         match item.kind {
             ItemKind::Directory => {
                 safe_remove_dir_all(&item.path, exclude_ref, false)?;
@@ -271,12 +270,12 @@ fn delete_items(
     })?;
 
     pb.finish_and_clear();
-    progress.println(format!("{}/{} Deletion complete", items.len(), items.len())).unwrap();
+    let _ = progress.println(format!("{}/{} Deletion complete", items.len(), items.len()));
     Ok(())
 }
 
 fn deletion_progress_style() -> ProgressStyle {
-    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6}")
+    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6} {msg}")
         .unwrap()
         .progress_chars("=|-")
 }
