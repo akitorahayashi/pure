@@ -28,7 +28,6 @@ impl XcodeScanner {
             paths.push(lib.join("Developer/Xcode/UserData/Previews"));
             paths.push(lib.join("Caches/org.swift.swiftpm"));
             paths.push(lib.join("org.swift.swiftpm"));
-            paths.push(lib.join("org.swift.swiftpm.lock"));
             paths.push(lib.join("Developer/CoreSimulator/Caches"));
         }
         paths
@@ -121,9 +120,8 @@ impl XcodeScanner {
                     && file_name == "Package.swift"
                     && let Some(parent) = path.parent()
                 {
-                    let parent = parent.to_path_buf();
-                    if processed_packages.insert(parent.clone()) {
-                        self.collect_swiftpm_artifacts(&parent, verbose, &mut items);
+                    if processed_packages.insert(parent.to_path_buf()) {
+                        self.collect_swiftpm_artifacts(parent, verbose, &mut items);
                     }
                 }
             }
@@ -156,7 +154,10 @@ impl XcodeScanner {
             while let Some(entry) = walker.next() {
                 let entry = match entry {
                     Ok(entry) => entry,
-                    Err(_) => continue,
+                    Err(err) => {
+                        eprintln!("Skipping {:?}: {}", err.path(), err);
+                        continue;
+                    }
                 };
 
                 let path = entry.path();
@@ -173,7 +174,6 @@ impl XcodeScanner {
                     walker.skip_current_dir();
                 } else if entry.file_type().is_file() && file_name == "Package.swift" {
                     swiftpm_projects += 1;
-                    walker.skip_current_dir();
                 }
             }
         }
