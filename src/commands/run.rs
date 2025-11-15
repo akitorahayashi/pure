@@ -247,7 +247,6 @@ fn delete_items(
 
     let pb = progress.add(ProgressBar::new(items.len() as u64));
     pb.set_style(deletion_progress_style());
-    pb.set_message("Deleting selected items...");
 
     let exclude_ref = exclude.as_ref();
     items.par_iter().try_for_each(|item| {
@@ -271,14 +270,18 @@ fn delete_items(
         Ok(())
     })?;
 
-    pb.finish_with_message("Deletion complete");
+    pb.finish_and_clear();
+    progress.println(format!(
+        "{}/{} Deletion complete",
+        items.len(), items.len()
+    )).unwrap();
     Ok(())
 }
 
 fn deletion_progress_style() -> ProgressStyle {
-    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6} {msg}")
+    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6}")
         .unwrap()
-        .progress_chars("##-")
+        .progress_chars("=|-")
 }
 
 #[cfg(test)]
