@@ -271,10 +271,7 @@ fn delete_items(
     })?;
 
     pb.finish_and_clear();
-    progress.println(format!(
-        "{}/{} Deletion complete",
-        items.len(), items.len()
-    )).unwrap();
+    progress.println(format!("{}/{} Deletion complete", items.len(), items.len())).unwrap();
     Ok(())
 }
 

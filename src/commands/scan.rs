@@ -120,12 +120,14 @@ fn run_filesystem_scan(
             let items = scanner.scan(roots, verbose)?;
             let count = items.len();
             spinner.finish_and_clear();
-            discovery_progress.println(format!(
-                "✔︎ {} discovery complete ({} item{})",
-                scanner.category().display_name(),
-                count,
-                if count == 1 { "" } else { "s" }
-            )).unwrap();
+            discovery_progress
+                .println(format!(
+                    "✔︎ {} discovery complete ({} item{})",
+                    scanner.category().display_name(),
+                    count,
+                    if count == 1 { "" } else { "s" }
+                ))
+                .unwrap();
             Ok(items)
         })
         .collect();
@@ -140,12 +142,15 @@ fn run_filesystem_scan(
     size_bar.set_style(size_progress_style());
     compute_sizes_parallel(&mut discovered_items, exclude.as_ref(), verbose, Some(&size_bar))?;
     size_bar.finish_and_clear();
-    progress.println(format!(
-        "{}/{} Size calculation complete ({} item{})",
-        total_items, total_items,
-        total_items,
-        if total_items == 1 { "" } else { "s" }
-    )).unwrap();
+    progress
+        .println(format!(
+            "{}/{} Size calculation complete ({} item{})",
+            total_items,
+            total_items,
+            total_items,
+            if total_items == 1 { "" } else { "s" }
+        ))
+        .unwrap();
 
     let mut grouped: BTreeMap<Category, Vec<ScanItem>> = BTreeMap::new();
     for item in discovered_items {
