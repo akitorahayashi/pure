@@ -119,10 +119,9 @@ impl XcodeScanner {
                 if entry.file_type().is_file()
                     && file_name == "Package.swift"
                     && let Some(parent) = path.parent()
+                    && processed_packages.insert(parent.to_path_buf())
                 {
-                    if processed_packages.insert(parent.to_path_buf()) {
-                        self.collect_swiftpm_artifacts(parent, verbose, &mut items);
-                    }
+                    self.collect_swiftpm_artifacts(parent, verbose, &mut items);
                 }
             }
         }
