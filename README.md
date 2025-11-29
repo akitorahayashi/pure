@@ -47,7 +47,7 @@ pure config --path                        # show where the configuration file is
 
 | Category  | Description (examples) |
 |-----------|------------------------|
-| `xcode`   | Smart Xcode/Swift cleanup. Detects project-local `DerivedData` and, only when a `Package.swift` is present, also cleans sibling `.build`, `.swiftpm`, and `Package.resolved`. When not using `--current`, also scans vetted global caches such as `~/Library/Developer/Xcode/DerivedData`, `~/Library/Caches/com.apple.dt.Xcode`, `~/Library/Developer/CoreSimulator/Caches`, and SwiftPM caches under `~/Library/Caches/org.swift.swiftpm`. |
+| `xcode`   | Smart Xcode/Swift cleanup. Detects project-local `DerivedData` and, only when a `Package.swift` is present, also cleans sibling `.build` and `.swiftpm`. When not using `--current`, also scans vetted global caches such as `~/Library/Developer/Xcode/DerivedData`, `~/Library/Caches/com.apple.dt.Xcode`, `~/Library/Developer/CoreSimulator/Caches`, and SwiftPM caches under `~/Library/Caches/org.swift.swiftpm`. |
 | `python`  | Python caches such as `__pycache__`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `.venv`, and `.uv-cache`. |
 | `rust`    | Rust build artifacts in `target` directories. |
 | `nodejs`  | NodeJS development artifacts including `node_modules`, `.next`, `.nuxt`, and `.svelte-kit`. |
