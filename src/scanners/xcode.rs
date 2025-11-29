@@ -256,9 +256,16 @@ mod tests {
             ".build directory should be reported when Package.swift exists"
         );
         assert!(
-            !items
+            items
                 .iter()
-                .any(|item| item.path.to_string_lossy().contains("AppWithPackage/Package.resolved")),
+                .any(|item| item.path.to_string_lossy().contains("AppWithPackage/.swiftpm")),
+            ".swiftpm directory should be reported when Package.swift exists"
+        );
+        assert!(
+            !items.iter().any(|item| item
+                .path
+                .to_string_lossy()
+                .contains("AppWithPackage/Package.resolved")),
             "Package.resolved should not be reported even if Package.swift exists"
         );
         assert!(
