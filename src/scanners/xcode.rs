@@ -43,7 +43,7 @@ impl XcodeScanner {
     }
 
     fn collect_swiftpm_artifacts(&self, parent: &Path, items: &mut Vec<ScanItem>) {
-        const ARTIFACTS: &[&str] = &[".build", ".swiftpm", "Package.resolved"];
+        const ARTIFACTS: &[&str] = &[".build", ".swiftpm"];
         for artifact in ARTIFACTS {
             let artifact_path = parent.join(artifact);
             if artifact_path.exists() {
@@ -170,7 +170,7 @@ impl XcodeScanner {
 
         if swiftpm_projects > 0 {
             targets.push(format!(
-                "SwiftPM Projects (.build, .swiftpm, Package.resolved) ({} location{} found)",
+                "SwiftPM Projects (.build, .swiftpm) ({} location{} found)",
                 swiftpm_projects,
                 if swiftpm_projects == 1 { "" } else { "s" }
             ));
@@ -254,6 +254,19 @@ mod tests {
         assert!(
             items.iter().any(|item| item.path.to_string_lossy().contains("AppWithPackage/.build")),
             ".build directory should be reported when Package.swift exists"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|item| item.path.to_string_lossy().contains("AppWithPackage/.swiftpm")),
+            ".swiftpm directory should be reported when Package.swift exists"
+        );
+        assert!(
+            !items.iter().any(|item| item
+                .path
+                .to_string_lossy()
+                .contains("AppWithPackage/Package.resolved")),
+            "Package.resolved should not be reported even if Package.swift exists"
         );
         assert!(
             !items
