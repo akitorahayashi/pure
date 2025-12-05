@@ -137,6 +137,5 @@ fn version_flag_works() {
     let mut cmd = command();
     cmd.arg("--version");
 
-    cmd.assert()
-        .success();
+    cmd.assert().success();
 }
