@@ -131,3 +131,11 @@ fn scan_default_includes_docker_category() {
         );
     }
 }
+
+#[test]
+fn version_flag_works() {
+    let mut cmd = command();
+    cmd.arg("--version");
+
+    cmd.assert().success().stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
+}
