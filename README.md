@@ -41,6 +41,7 @@ pure scan --type nodejs                   # scan NodeJS projects only
 pure run                                  # scan, pick categories interactively, then confirm before deleting
 pure run --current --type rust -y         # delete Rust build artifacts in current directory without prompting
 pure config --path                        # show where the configuration file is stored
+pure --version                            # show version information
 ```
 
 ### Categories
