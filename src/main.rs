@@ -61,10 +61,13 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Perform a dry-run scan to see what can be removed.
+    #[command(visible_alias = "sc")]
     Scan(ScanArgs),
     /// Delete files discovered by a scan.
+    #[command(visible_alias = "rn")]
     Run(RunArgs),
     /// Manage pure configuration (exclusions, etc.).
+    #[command(visible_alias = "cfg")]
     Config(ConfigArgs),
 }
 
