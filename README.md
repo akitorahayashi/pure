@@ -34,13 +34,14 @@ The release binary will be available at `target/release/pure`.
 
 ```bash
 pure scan --all                           # scan every category (defaults to ~/Desktop)
-pure scan --current                       # scan only the current directory instead of ~/Desktop
+pure sc --current                         # alias: sc for scan
 pure scan --list                          # quickly list cleanup targets without calculating sizes
 pure scan --type python -v                # detailed list of Python caches
 pure scan --type nodejs                   # scan NodeJS projects only
 pure run                                  # scan, pick categories interactively, then confirm before deleting
-pure run --current --type rust -y         # delete Rust build artifacts in current directory without prompting
+pure rn --current --type rust -y          # alias: rn for run
 pure config --path                        # show where the configuration file is stored
+pure cfg --edit                           # alias: cfg for config
 pure --version                            # show version information
 ```
 
