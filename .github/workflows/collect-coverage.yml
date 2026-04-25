@@ -1,11 +1,11 @@
-name: Run Tests
+name: Collect Coverage
 
 on:
   workflow_call:
 
 jobs:
-  test:
-    name: Run all tests
+  coverage:
+    name: Run test coverage
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: 1
@@ -19,9 +19,15 @@ jobs:
         with:
           rust-version: 1.90.0
           install-mise: 'true'
-          mise-tools: just
+          mise-tools: just cargo:cargo-tarpaulin
 
-      - name: Run all tests
-        run: mise exec -- just test
+      - name: Reset tarpaulin runtime outputs
+        run: |
+          rm -rf target/tarpaulin
+          rm -rf coverage
+        shell: bash
+
+      - name: Generate coverage
+        run: mise exec -- just coverage
         env:
           RUST_TEST_THREADS: 1

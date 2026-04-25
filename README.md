@@ -85,9 +85,10 @@ file is created on demand if it does not already exist.
 
 Useful commands when working on the project:
 
-- `cargo fmt --check`
-- `cargo clippy --all-targets --all-features -- -D warnings`
-- `RUST_TEST_THREADS=1 cargo test --all-targets --all-features`
+- `just setup`
+- `just check`
+- `just test`
+- `just coverage`
 
 The integration tests rely on temporary directories and set `HOME`/`XDG_CONFIG_HOME` to avoid
 mutating your real environment.
