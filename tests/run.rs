@@ -1,7 +1,6 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
-use std::env;
 
 fn command() -> Command {
     Command::cargo_bin("pure").expect("binary exists")
@@ -51,12 +50,14 @@ fn run_current_skips_brew_category() {
     cache.child("debug").create_dir_all().unwrap();
     cache.child("debug/pure").write_str("executable").unwrap();
 
-    // Change to temp directory to test --current
-    let original_dir = env::current_dir().unwrap();
-    env::set_current_dir(temp.path()).unwrap();
-
     let mut cmd = command();
-    cmd.env("HOME", temp.path()).arg("run").arg("--current").arg("--type").arg("rust").arg("-y");
+    cmd.current_dir(temp.path())
+        .env("HOME", temp.path())
+        .arg("run")
+        .arg("--current")
+        .arg("--type")
+        .arg("rust")
+        .arg("-y");
 
     let output = cmd.assert().success();
 
@@ -66,7 +67,4 @@ fn run_current_skips_brew_category() {
         predicate::str::contains("Attempted to delete")
             .or(predicate::str::contains("Nothing to delete")),
     );
-
-    // Restore original directory
-    env::set_current_dir(original_dir).unwrap();
 }

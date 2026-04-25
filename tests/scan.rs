@@ -1,7 +1,6 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
-use std::env;
 
 fn command() -> Command {
     Command::cargo_bin("pure").expect("binary exists")
@@ -33,20 +32,17 @@ fn scan_python_verbose_lists_targets() {
 fn scan_current_skips_brew_category() {
     let temp = assert_fs::TempDir::new().unwrap();
 
-    // Change to the temp directory to test --current
-    let original_dir = env::current_dir().unwrap();
-    env::set_current_dir(temp.path()).unwrap();
-
     let mut cmd = command();
-    cmd.env("HOME", temp.path()).arg("scan").arg("--current").arg("--list");
+    cmd.current_dir(temp.path())
+        .env("HOME", temp.path())
+        .arg("scan")
+        .arg("--current")
+        .arg("--list");
 
     let result = cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
 
     // Brew should not appear in --current scan results
     result.stdout(predicate::str::contains("Homebrew").not());
-
-    // Restore original directory
-    env::set_current_dir(original_dir).unwrap();
 }
 
 #[test]
@@ -64,11 +60,12 @@ fn scan_default_includes_brew_category() {
 fn scan_current_skips_docker_category() {
     let temp = assert_fs::TempDir::new().unwrap();
 
-    let original_dir = env::current_dir().unwrap();
-    env::set_current_dir(temp.path()).unwrap();
-
     let mut cmd = command();
-    cmd.env("HOME", temp.path()).arg("scan").arg("--current").arg("--list");
+    cmd.current_dir(temp.path())
+        .env("HOME", temp.path())
+        .arg("scan")
+        .arg("--current")
+        .arg("--list");
 
     cmd.assert()
         .success()
@@ -79,8 +76,6 @@ fn scan_current_skips_docker_category() {
         .stdout(predicate::str::contains("Dangling volumes").not())
         .stdout(predicate::str::contains("Unused networks").not())
         .stdout(predicate::str::contains("Build cache").not());
-
-    env::set_current_dir(original_dir).unwrap();
 }
 
 #[test]
