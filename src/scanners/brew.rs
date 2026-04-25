@@ -4,17 +4,14 @@ use dirs_next as dirs;
 
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
-use crate::path::is_excluded;
 
 use super::CategoryScanner;
 
-pub struct BrewScanner {
-    exclude: Option<globset::GlobSet>,
-}
+pub struct BrewScanner;
 
 impl BrewScanner {
-    pub fn new(exclude: Option<globset::GlobSet>) -> Self {
-        Self { exclude }
+    pub fn new() -> Self {
+        Self
     }
 
     fn brew_paths() -> Vec<PathBuf> {
@@ -30,9 +27,6 @@ impl BrewScanner {
     fn collect_directories(&self, paths: Vec<PathBuf>) -> Result<Vec<ScanItem>, AppError> {
         let mut items = Vec::new();
         for path in paths {
-            if is_excluded(&path, self.exclude.as_ref()) {
-                continue;
-            }
             if path.exists() {
                 items.push(ScanItem::directory(Category::Brew, path, 0));
             }
@@ -55,7 +49,7 @@ impl CategoryScanner for BrewScanner {
         let paths = Self::brew_paths();
 
         for path in paths {
-            if !is_excluded(&path, self.exclude.as_ref()) && path.exists() {
+            if path.exists() {
                 targets.push(format!("{} (exists)", path.display()));
             }
         }

@@ -15,7 +15,6 @@ fn alias_sc_works_like_scan() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("sc")
         .arg("--type")
         .arg("python")
@@ -37,17 +36,4 @@ fn alias_rn_works_like_run() {
     cmd.arg("rn").arg("--help");
 
     cmd.assert().success().stdout(predicate::str::contains("Delete files discovered by a scan"));
-}
-
-#[test]
-fn alias_cfg_works_like_config() {
-    let temp = assert_fs::TempDir::new().unwrap();
-
-    let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
-        .arg("cfg")
-        .arg("--path");
-
-    cmd.assert().success().stdout(predicate::str::contains("config.toml"));
 }

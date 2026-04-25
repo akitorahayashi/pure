@@ -8,8 +8,8 @@ const RUST_TARGETS: &[&str] = &["target"];
 pub struct RustScanner(GenericScanner);
 
 impl RustScanner {
-    pub fn new(exclude: Option<globset::GlobSet>) -> Self {
-        Self(GenericScanner::new(Category::Rust, RUST_TARGETS, exclude))
+    pub fn new() -> Self {
+        Self(GenericScanner::new(Category::Rust, RUST_TARGETS))
     }
 }
 

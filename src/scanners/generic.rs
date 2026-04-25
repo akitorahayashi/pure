@@ -5,21 +5,15 @@ use walkdir::WalkDir;
 use super::CategoryScanner;
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
-use crate::path::is_excluded;
 
 pub struct GenericScanner {
     category: Category,
     targets: &'static [&'static str],
-    exclude: Option<globset::GlobSet>,
 }
 
 impl GenericScanner {
-    pub fn new(
-        category: Category,
-        targets: &'static [&'static str],
-        exclude: Option<globset::GlobSet>,
-    ) -> Self {
-        Self { category, targets, exclude }
+    pub fn new(category: Category, targets: &'static [&'static str]) -> Self {
+        Self { category, targets }
     }
 }
 
@@ -46,13 +40,6 @@ impl CategoryScanner for GenericScanner {
                 };
 
                 let path = entry.path();
-                if is_excluded(path, self.exclude.as_ref()) {
-                    if entry.file_type().is_dir() {
-                        walker.skip_current_dir();
-                    }
-                    continue;
-                }
-
                 if entry.file_type().is_dir() {
                     let name = entry.file_name().to_string_lossy();
                     if target_names.contains(name.as_ref()) {
@@ -86,14 +73,6 @@ impl CategoryScanner for GenericScanner {
                     Ok(entry) => entry,
                     Err(_) => continue,
                 };
-
-                let path = entry.path();
-                if is_excluded(path, self.exclude.as_ref()) {
-                    if entry.file_type().is_dir() {
-                        walker.skip_current_dir();
-                    }
-                    continue;
-                }
 
                 if entry.file_type().is_dir() {
                     let name = entry.file_name().to_string_lossy();
