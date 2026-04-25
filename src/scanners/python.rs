@@ -9,8 +9,14 @@ const PYTHON_TARGETS: &[&str] =
 pub struct PythonScanner(GenericScanner);
 
 impl PythonScanner {
-    pub fn new(exclude: Option<globset::GlobSet>) -> Self {
-        Self(GenericScanner::new(Category::Python, PYTHON_TARGETS, exclude))
+    pub fn new() -> Self {
+        Self(GenericScanner::new(Category::Python, PYTHON_TARGETS))
+    }
+}
+
+impl Default for PythonScanner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

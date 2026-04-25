@@ -16,7 +16,6 @@ fn scan_python_verbose_lists_targets() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--type")
         .arg("python")
@@ -39,11 +38,7 @@ fn scan_current_skips_brew_category() {
     env::set_current_dir(temp.path()).unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
-        .arg("scan")
-        .arg("--current")
-        .arg("--list");
+    cmd.env("HOME", temp.path()).arg("scan").arg("--current").arg("--list");
 
     let result = cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
 
@@ -59,11 +54,7 @@ fn scan_default_includes_brew_category() {
     let temp = assert_fs::TempDir::new().unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
-        .arg("scan")
-        .arg("--list")
-        .arg(temp.path());
+    cmd.env("HOME", temp.path()).arg("scan").arg("--list").arg(temp.path());
 
     // Default scan should include brew (even if no targets found, category should be checked)
     cmd.assert().success().stdout(predicate::str::contains("Found cleanup targets"));
@@ -77,11 +68,7 @@ fn scan_current_skips_docker_category() {
     env::set_current_dir(temp.path()).unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
-        .arg("scan")
-        .arg("--current")
-        .arg("--list");
+    cmd.env("HOME", temp.path()).arg("scan").arg("--current").arg("--list");
 
     cmd.assert()
         .success()
@@ -101,11 +88,7 @@ fn scan_default_includes_docker_category() {
     let temp = assert_fs::TempDir::new().unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
-        .arg("scan")
-        .arg("--list")
-        .arg(temp.path());
+    cmd.env("HOME", temp.path()).arg("scan").arg("--list").arg(temp.path());
 
     let assert = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);

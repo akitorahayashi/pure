@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use pure::commands::{config_cmd::ConfigOptions, run::RunOptions, scan::ScanOptions};
-use pure::commands::{execute_config, execute_run, execute_scan};
+use pure::commands::{execute_run, execute_scan};
+use pure::commands::{run::RunOptions, scan::ScanOptions};
 use pure::error::AppError;
 use pure::model::Category;
 use pure::path::resolve_roots_with_current;
@@ -42,10 +42,6 @@ fn run() -> Result<(), AppError> {
             };
             execute_run(options)?;
         }
-        Commands::Config(args) => {
-            let options = ConfigOptions { show_path: args.path, edit: args.edit };
-            execute_config(options)?;
-        }
     }
 
     Ok(())
@@ -66,9 +62,6 @@ enum Commands {
     /// Delete files discovered by a scan.
     #[command(visible_alias = "rn")]
     Run(RunArgs),
-    /// Manage pure configuration (exclusions, etc.).
-    #[command(visible_alias = "cfg")]
-    Config(ConfigArgs),
 }
 
 #[derive(Args)]
@@ -123,17 +116,6 @@ struct RunArgs {
     /// Optional paths to operate on (defaults to ~/Desktop).
     #[arg(value_name = "PATH", num_args = 0..)]
     paths: Vec<PathBuf>,
-}
-
-#[derive(Args)]
-struct ConfigArgs {
-    /// Show the configuration file path.
-    #[arg(long = "path", action = ArgAction::SetTrue)]
-    path: bool,
-
-    /// Open the configuration file in $EDITOR.
-    #[arg(long = "edit", action = ArgAction::SetTrue)]
-    edit: bool,
 }
 
 fn resolve_categories(categories: Vec<Category>, all: bool) -> Vec<Category> {

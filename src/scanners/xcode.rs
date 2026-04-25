@@ -1,20 +1,19 @@
 use super::CategoryScanner;
 use crate::error::AppError;
 use crate::model::{Category, ItemKind, ScanItem};
-use crate::path::is_excluded;
+
 use dirs_next as dirs;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub struct XcodeScanner {
-    exclude: Option<globset::GlobSet>,
     current: bool,
 }
 
 impl XcodeScanner {
-    pub fn new(exclude: Option<globset::GlobSet>, current: bool) -> Self {
-        Self { exclude, current }
+    pub fn new(current: bool) -> Self {
+        Self { current }
     }
 
     fn global_safe_paths() -> Vec<PathBuf> {
@@ -34,10 +33,6 @@ impl XcodeScanner {
     }
 
     fn add_path(&self, path: &Path, items: &mut Vec<ScanItem>) {
-        if is_excluded(path, self.exclude.as_ref()) {
-            return;
-        }
-
         let kind = if path.is_file() { ItemKind::File } else { ItemKind::Directory };
         items.push(ScanItem { category: Category::Xcode, path: path.to_path_buf(), size: 0, kind });
     }
@@ -84,12 +79,6 @@ impl XcodeScanner {
                 };
 
                 let path = entry.path();
-                if is_excluded(path, self.exclude.as_ref()) {
-                    if entry.file_type().is_dir() {
-                        walker.skip_current_dir();
-                    }
-                    continue;
-                }
 
                 let file_name = entry.file_name().to_string_lossy();
 
@@ -115,7 +104,7 @@ impl XcodeScanner {
     fn list_global_targets(&self) -> Vec<String> {
         let mut targets = Vec::new();
         for path in Self::global_safe_paths() {
-            if path.exists() && !is_excluded(&path, self.exclude.as_ref()) {
+            if path.exists() {
                 targets.push(format!("{} (exists)", path.display()));
             }
         }
@@ -141,14 +130,6 @@ impl XcodeScanner {
                         continue;
                     }
                 };
-
-                let path = entry.path();
-                if is_excluded(path, self.exclude.as_ref()) {
-                    if entry.file_type().is_dir() {
-                        walker.skip_current_dir();
-                    }
-                    continue;
-                }
 
                 let file_name = entry.file_name().to_string_lossy();
                 if entry.file_type().is_dir() && file_name == "DerivedData" {
@@ -221,7 +202,7 @@ mod tests {
         derived.create_dir_all().unwrap();
         derived.child("foo.txt").write_str("cache").unwrap();
 
-        let scanner = XcodeScanner::new(None, false);
+        let scanner = XcodeScanner::new(false);
         let items =
             scanner.scan(&[project_root.path().to_path_buf()], true).expect("scan succeeds");
 
@@ -248,7 +229,7 @@ mod tests {
         no_pkg.create_dir_all().unwrap();
         no_pkg.child(".build/output.o").write_str("bin").unwrap();
 
-        let scanner = XcodeScanner::new(None, false);
+        let scanner = XcodeScanner::new(false);
         let items = scanner.scan(&[roots.path().to_path_buf()], true).expect("scan succeeds");
 
         assert!(
@@ -289,7 +270,7 @@ mod tests {
             env::set_var("HOME", temp_home.path());
         }
 
-        let scanner = XcodeScanner::new(None, false);
+        let scanner = XcodeScanner::new(false);
         let items = scanner.scan(&[], false).expect("scan succeeds");
         assert!(
             items.iter().any(|item| item
@@ -299,7 +280,7 @@ mod tests {
             "global caches should be detected when not in current-only mode"
         );
 
-        let current_scanner = XcodeScanner::new(None, true);
+        let current_scanner = XcodeScanner::new(true);
         let current_items = current_scanner.scan(&[], false).expect("scan succeeds");
         assert!(current_items.is_empty(), "--current should skip global caches");
 

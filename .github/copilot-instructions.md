@@ -1,1 +1,1 @@
-../.codex/AGENTS.md
+/Users/akb/.config/mev/roles/nodejs/global/coder/AGENTS.md
