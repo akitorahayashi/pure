@@ -5,7 +5,7 @@ default: help
 help:
     @echo "Usage: just [recipe]"
     @echo ""
-    @echo "Development tasks for pure CLI:"
+    @echo "Development tasks for prf CLI:"
     @just --list | tail -n +2 | awk '{printf "  \033[36m%-20s\033[0m %s\n", $1, substr($0, index($0, $2))}'
 
 setup:
@@ -30,7 +30,7 @@ coverage:
     mise exec -- cargo tarpaulin \
         --engine llvm \
         --target-dir target/tarpaulin \
-        --packages pure \
+        --packages prf \
         --out Stdout \
         --out Html \
         --output-dir coverage \

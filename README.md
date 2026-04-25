@@ -1,8 +1,8 @@
-# pure
+# prf
 
 Desktop-focused command line cleaner.
 
-`pure` scans development caches and build artifacts in desktop projects to help reclaim disk
+prf is a desktop command-line cleaner derived from 'purify'. It scans development caches and build artifacts in desktop projects to help reclaim disk
 space. Scans are dry-run by default, and deletion requires explicit confirmation unless `-y/--yes`
 is supplied.
 
@@ -14,23 +14,23 @@ is supplied.
 cargo install --path .
 ```
 
-The release binary will be available at `target/release/pure`.
+The release binary will be available at `target/release/prf`.
 
 ### Verification
 
 ```bash
-pure --version
-pure scan --list
+prf --version
+prf scan --list
 ```
 
 ### Common Commands
 
 ```bash
-pure scan --all                  # Scan every category
-pure sc --current                # Alias for scan in current-directory mode
-pure run                         # Scan, select categories, and confirm deletion
-pure rn --current --type rust -y # Alias for run with explicit deletion
-pure scan --type python -v       # Show detailed Python cleanup targets
+prf scan --all                  # Scan every category
+prf sc --current                # Alias for scan in current-directory mode
+prf run                         # Scan, select categories, and confirm deletion
+prf rn --current --type rust -y # Alias for run with explicit deletion
+prf scan --type python -v       # Show detailed Python cleanup targets
 ```
 
 ### Categories
