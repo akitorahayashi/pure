@@ -45,31 +45,8 @@ pub fn resolve_roots_with_current(explicit: &[PathBuf], current: bool) -> Vec<Pa
     }
 }
 
-pub fn is_excluded(path: &Path, exclude: Option<&globset::GlobSet>) -> bool {
-    if let Some(set) = exclude {
-        if path.is_absolute() {
-            return set.is_match(path);
-        }
-
-        match std::env::current_dir() {
-            Ok(cwd) => set.is_match(cwd.join(path)),
-            Err(e) => {
-                eprintln!(
-                    "Warning: could not get current directory to check exclusion for relative path {}: {}",
-                    path.display(),
-                    e
-                );
-                false
-            }
-        }
-    } else {
-        false
-    }
-}
-
 pub fn path_size(
     path: &Path,
-    exclude: Option<&globset::GlobSet>,
     verbose: bool,
 ) -> Result<u64, AppError> {
     if path.is_file() {
@@ -88,14 +65,6 @@ pub fn path_size(
                 }
             };
 
-            let entry_path = entry.path();
-            if is_excluded(entry_path, exclude) {
-                if entry.file_type().is_dir() {
-                    walker.skip_current_dir();
-                }
-                continue;
-            }
-
             if entry.file_type().is_file() {
                 match entry.metadata() {
                     Ok(metadata) => {
@@ -103,7 +72,7 @@ pub fn path_size(
                     }
                     Err(err) => {
                         if verbose {
-                            eprintln!("Skipping {}: {}", entry_path.display(), err);
+                            eprintln!("Skipping {}: {}", entry.path().display(), err);
                         }
                     }
                 }
@@ -115,7 +84,6 @@ pub fn path_size(
 
 pub fn safe_remove_dir_all(
     path: &Path,
-    exclude: Option<&globset::GlobSet>,
     verbose: bool,
 ) -> Result<(), AppError> {
     let mut files_to_remove = Vec::new();
@@ -132,14 +100,6 @@ pub fn safe_remove_dir_all(
                 continue;
             }
         };
-
-        let entry_path = entry.path();
-        if is_excluded(entry_path, exclude) {
-            if entry.file_type().is_dir() {
-                walker.skip_current_dir();
-            }
-            continue;
-        }
 
         if entry.file_type().is_file() {
             files_to_remove.push(entry.into_path());

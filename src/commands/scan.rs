@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::config::Config;
 use crate::docker_cleanup::{list_targets_docker, scan_docker};
 use crate::error::AppError;
 use crate::format::format_bytes;
@@ -22,12 +21,9 @@ pub struct ScanOptions {
 }
 
 pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
-    let config = Config::load()?;
-    let exclude = config.compile_excludes()?;
-
     if options.list {
         let list_results =
-            list_targets(&options.categories, &options.roots, options.current, exclude)?;
+            list_targets(&options.categories, &options.roots, options.current)?;
         print_list_results(&list_results);
         // Return empty report for --list mode
         Ok(ScanReport::new())
@@ -38,7 +34,6 @@ pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
             &options.roots,
             options.verbose,
             options.current,
-            exclude,
             &progress,
         )?;
         print_report(&report, &options);
@@ -51,7 +46,6 @@ pub(crate) fn scan_categories(
     roots: &[PathBuf],
     verbose: bool,
     current: bool,
-    exclude: Option<globset::GlobSet>,
     progress: &Arc<MultiProgress>,
 ) -> Result<ScanReport, AppError> {
     let fs_categories: Vec<_> =
@@ -66,7 +60,6 @@ pub(crate) fn scan_categories(
                     roots,
                     verbose,
                     current,
-                    exclude.clone(),
                     progress,
                 )
             },
@@ -80,7 +73,7 @@ pub(crate) fn scan_categories(
         }
         Ok(report)
     } else {
-        run_filesystem_scan(&fs_categories, roots, verbose, current, exclude, progress)
+        run_filesystem_scan(&fs_categories, roots, verbose, current, progress)
     }
 }
 
@@ -89,14 +82,13 @@ fn run_filesystem_scan(
     roots: &[PathBuf],
     verbose: bool,
     current: bool,
-    exclude: Option<globset::GlobSet>,
     progress: &Arc<MultiProgress>,
 ) -> Result<ScanReport, AppError> {
     if fs_categories.is_empty() {
         return Ok(ScanReport::new());
     }
 
-    let scanners = get_scanners(exclude.clone(), current);
+    let scanners = get_scanners(current);
     let filtered_scanners: Vec<_> = scanners
         .into_iter()
         .filter(|scanner| fs_categories.contains(&scanner.category()))
@@ -139,7 +131,7 @@ fn run_filesystem_scan(
     let total_items = discovered_items.len();
     let size_bar = progress.add(ProgressBar::new(total_items as u64));
     size_bar.set_style(size_progress_style());
-    compute_sizes_parallel(&mut discovered_items, exclude.as_ref(), verbose, Some(&size_bar))?;
+    compute_sizes_parallel(&mut discovered_items, verbose, Some(&size_bar))?;
     size_bar.finish_and_clear();
     let _ = progress.println(format!(
         "{}/{} Size calculation complete ({} item{})",
@@ -166,14 +158,13 @@ fn run_filesystem_scan(
 
 fn compute_sizes_parallel(
     items: &mut [ScanItem],
-    exclude: Option<&globset::GlobSet>,
     verbose: bool,
     progress: Option<&ProgressBar>,
 ) -> Result<(), AppError> {
     items.par_iter_mut().try_for_each(|item| {
         if item.size == 0 {
             item.size = match item.kind {
-                ItemKind::Directory => path_size(&item.path, exclude, verbose)?,
+                ItemKind::Directory => path_size(&item.path, verbose)?,
                 ItemKind::File => item.path.metadata()?.len(),
             };
         }
@@ -198,13 +189,12 @@ fn list_targets(
     categories: &[Category],
     roots: &[PathBuf],
     current: bool,
-    exclude: Option<globset::GlobSet>,
 ) -> Result<BTreeMap<Category, Vec<String>>, AppError> {
     let docker_list = categories.contains(&Category::Docker);
     let fs_categories: Vec<_> =
         categories.iter().copied().filter(|category| *category != Category::Docker).collect();
 
-    let scanners = get_scanners(exclude.clone(), current);
+    let scanners = get_scanners(current);
 
     // Filter scanners to only those requested
     let filtered_scanners: Vec<_> = scanners
@@ -276,19 +266,18 @@ fn print_list_results(results: &BTreeMap<Category, Vec<String>>) {
 }
 
 pub fn get_scanners(
-    exclude: Option<globset::GlobSet>,
     current: bool,
 ) -> Vec<Box<dyn CategoryScanner>> {
     let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
-        Box::new(XcodeScanner::new(exclude.clone(), current)),
-        Box::new(PythonScanner::new(exclude.clone())),
-        Box::new(RustScanner::new(exclude.clone())),
-        Box::new(NodejsScanner::new(exclude.clone())),
+        Box::new(XcodeScanner::new(current)),
+        Box::new(PythonScanner::new()),
+        Box::new(RustScanner::new()),
+        Box::new(NodejsScanner::new()),
     ];
 
     // Only add BrewScanner if not scanning current directory
     if !current {
-        scanners.push(Box::new(BrewScanner::new(exclude.clone())));
+        scanners.push(Box::new(BrewScanner::new()));
     }
 
     scanners
@@ -314,7 +303,7 @@ mod tests {
             ScanItem::file(Category::Nodejs, file.path().to_path_buf(), 0),
         ];
 
-        compute_sizes_parallel(&mut items, None, false, None).expect("size calculation succeeds");
+        compute_sizes_parallel(&mut items, false, None).expect("size calculation succeeds");
 
         assert!(
             items.iter().all(|item| item.size > 0),

@@ -16,7 +16,6 @@ fn scan_python_verbose_lists_targets() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--type")
         .arg("python")
@@ -40,7 +39,6 @@ fn scan_current_skips_brew_category() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--current")
         .arg("--list");
@@ -60,7 +58,6 @@ fn scan_default_includes_brew_category() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--list")
         .arg(temp.path());
@@ -78,7 +75,6 @@ fn scan_current_skips_docker_category() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--current")
         .arg("--list");
@@ -102,7 +98,6 @@ fn scan_default_includes_docker_category() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("scan")
         .arg("--list")
         .arg(temp.path());

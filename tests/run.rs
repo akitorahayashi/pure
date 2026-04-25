@@ -16,7 +16,6 @@ fn run_type_dev_yes_deletes_directories() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("run")
         .arg("--type")
         .arg("nodejs")
@@ -37,7 +36,6 @@ fn run_interactive_accepts_selection() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("run")
         .arg(temp.path())
         .write_stdin("python\ny\n")
@@ -64,7 +62,6 @@ fn run_current_skips_brew_category() {
 
     let mut cmd = command();
     cmd.env("HOME", temp.path())
-        .env("XDG_CONFIG_HOME", temp.child("config").path())
         .arg("run")
         .arg("--current")
         .arg("--type")

@@ -4,12 +4,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::commands::scan::scan_categories;
-use crate::config::Config;
 use crate::docker_cleanup::run_docker_cleanup;
 use crate::error::AppError;
 use crate::format::format_bytes;
 use crate::model::{Category, ScanItem, ScanReport};
-use crate::path::{display_path, is_excluded, safe_remove_dir_all};
+use crate::path::{display_path, safe_remove_dir_all};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
@@ -23,9 +22,6 @@ pub struct RunOptions {
 }
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
-    let config = Config::load()?;
-    let exclude = config.compile_excludes()?;
-
     let debug_logging = std::env::var_os("PURE_DEBUG").is_some();
     let requested_categories = if options.all {
         Category::ALL.to_vec()
@@ -41,7 +37,6 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         &options.roots,
         options.verbose,
         options.current,
-        exclude.clone(),
         &progress,
     )?;
     if debug_logging {
@@ -97,13 +92,13 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     if needs_docker_cleanup {
         let delete_progress = Arc::clone(&progress);
         let (delete_result, docker_result) = rayon::join(
-            || delete_items(&fs_items_to_delete, exclude.clone(), &delete_progress),
+            || delete_items(&fs_items_to_delete, &delete_progress),
             || run_docker_cleanup_with_handling(options.verbose),
         );
         delete_result?;
         docker_result?;
     } else {
-        delete_items(&fs_items_to_delete, exclude, &progress)?;
+        delete_items(&fs_items_to_delete, &progress)?;
     }
     if debug_logging {
         eprintln!("[pure::run] deletion phase complete");
@@ -231,7 +226,6 @@ fn print_summary(report: &ScanReport, verbose: bool) {
 
 fn delete_items(
     items: &[ScanItem],
-    exclude: Option<globset::GlobSet>,
     progress: &Arc<MultiProgress>,
 ) -> Result<(), AppError> {
     use crate::model::ItemKind;
@@ -245,18 +239,12 @@ fn delete_items(
     let pb = progress.add(ProgressBar::new(items.len() as u64));
     pb.set_style(deletion_progress_style());
 
-    let exclude_ref = exclude.as_ref();
     items.par_iter().try_for_each(|item| {
-        if is_excluded(&item.path, exclude_ref) {
-            pb.inc(1);
-            return Ok(());
-        }
-
         pb.set_message(display_path(&item.path));
 
         match item.kind {
             ItemKind::Directory => {
-                safe_remove_dir_all(&item.path, exclude_ref, false)?;
+                safe_remove_dir_all(&item.path, false)?;
             }
             ItemKind::File => match fs::remove_file(&item.path) {
                 Ok(()) => {}
@@ -301,35 +289,9 @@ mod tests {
         ];
 
         let progress = Arc::new(MultiProgress::new());
-        delete_items(&items, None, &progress).expect("deletion succeeds");
+        delete_items(&items, &progress).expect("deletion succeeds");
 
         dir.assert(predicates::path::missing());
         file.assert(predicates::path::missing());
-    }
-
-    #[test]
-    fn delete_items_respects_exclusions() {
-        let temp = TempDir::new().unwrap();
-        let skip_dir = temp.child("skip");
-        skip_dir.create_dir_all().unwrap();
-        skip_dir.child("data.txt").write_str("cache").unwrap();
-        let remove_dir = temp.child("remove-me");
-        remove_dir.create_dir_all().unwrap();
-        remove_dir.child("data.txt").write_str("cache").unwrap();
-
-        let mut builder = globset::GlobSetBuilder::new();
-        builder.add(globset::Glob::new("**/skip/**").unwrap());
-        let exclude = Some(builder.build().unwrap());
-
-        let items = vec![
-            ScanItem::directory(Category::Nodejs, skip_dir.path().to_path_buf(), 0),
-            ScanItem::directory(Category::Nodejs, remove_dir.path().to_path_buf(), 0),
-        ];
-
-        let progress = Arc::new(MultiProgress::new());
-        delete_items(&items, exclude, &progress).expect("deletion succeeds");
-
-        skip_dir.assert(predicates::path::exists());
-        remove_dir.assert(predicates::path::missing());
     }
 }
