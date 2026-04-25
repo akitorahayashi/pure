@@ -23,7 +23,7 @@ The CLI currently uses command-line flags as the primary runtime configuration s
 - Deletion confirmation control: `-y/--yes`
 - Verbose reporting: `-v/--verbose`
 
-Debug logging for run flow can be enabled with environment variable `PURE_DEBUG`.
+Debug logging for run flow can be enabled with environment variable `PRF_DEBUG`.
 
 ## CI/CD Contract
 

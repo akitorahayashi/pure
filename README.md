@@ -1,8 +1,6 @@
 # prf
 
-prf is a desktop command-line cleaner derived from 'purify'.
-
-Desktop-focused command line cleaner.
+prf is a desktop-focused command-line cleaner derived from 'purify'.
 
 `prf` scans development caches and build artifacts in desktop projects to help reclaim disk
 space. Scans are dry-run by default, and deletion requires explicit confirmation unless `-y/--yes`

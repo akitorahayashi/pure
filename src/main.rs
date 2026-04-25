@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use prf::commands::{execute_run, execute_scan};
-use prf::commands::{run::RunOptions, scan::ScanOptions};
+use prf::commands::{execute_run, execute_scan, run::RunOptions, scan::ScanOptions};
 use prf::error::AppError;
 use prf::model::Category;
 use prf::path::resolve_roots_with_current;

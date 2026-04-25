@@ -22,7 +22,7 @@ pub struct RunOptions {
 }
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
-    let debug_logging = std::env::var_os("PURE_DEBUG").is_some();
+    let debug_logging = std::env::var_os("PRF_DEBUG").is_some();
     let requested_categories = if options.all {
         Category::ALL.to_vec()
     } else if let Some(explicit) = &options.categories {
