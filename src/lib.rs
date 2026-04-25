@@ -1,4 +1,4 @@
-//! Library entry point for the pure CLI.
+//! Library entry point for the prf CLI (purify).
 
 pub mod commands;
 pub mod docker_cleanup;

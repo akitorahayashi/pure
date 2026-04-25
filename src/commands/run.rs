@@ -22,7 +22,7 @@ pub struct RunOptions {
 }
 
 pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
-    let debug_logging = std::env::var_os("PURE_DEBUG").is_some();
+    let debug_logging = std::env::var_os("PRF_DEBUG").is_some();
     let requested_categories = if options.all {
         Category::ALL.to_vec()
     } else if let Some(explicit) = &options.categories {
@@ -40,7 +40,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         &progress,
     )?;
     if debug_logging {
-        eprintln!("[pure::run] finished scan phase");
+        eprintln!("[prf::run] finished scan phase");
     }
 
     let selected_categories = if options.all {
@@ -67,7 +67,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
 
     print_summary(&subset, options.verbose);
     if debug_logging {
-        eprintln!("[pure::run] printed summary, awaiting confirmation");
+        eprintln!("[prf::run] printed summary, awaiting confirmation");
     }
 
     if !options.assume_yes && !confirm_deletion(subset.total_size())? {
@@ -75,7 +75,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         return Ok(());
     }
     if debug_logging {
-        eprintln!("[pure::run] confirmation obtained");
+        eprintln!("[prf::run] confirmation obtained");
     }
 
     let items_to_delete: Vec<ScanItem> =
@@ -87,7 +87,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
     let needs_docker_cleanup = selected_categories.contains(&Category::Docker) && !options.current;
 
     if debug_logging {
-        eprintln!("[pure::run] starting deletion (docker_cleanup={})", needs_docker_cleanup);
+        eprintln!("[prf::run] starting deletion (docker_cleanup={})", needs_docker_cleanup);
     }
     if needs_docker_cleanup {
         let delete_progress = Arc::clone(&progress);
@@ -101,7 +101,7 @@ pub fn execute_run(options: RunOptions) -> Result<(), AppError> {
         delete_items(&fs_items_to_delete, &progress)?;
     }
     if debug_logging {
-        eprintln!("[pure::run] deletion phase complete");
+        eprintln!("[prf::run] deletion phase complete");
     }
 
     println!(

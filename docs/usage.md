@@ -3,20 +3,20 @@
 The scan flow executes via:
 
 ```sh
-pure scan --all                       # Scan all categories (default set)
-pure scan --type python ~/Desktop     # Scan only python targets
-pure scan --type rust --verbose .     # Show item-level paths and sizes
-pure scan --list ~/Desktop            # Fast target listing without size calculation
-pure sc --current                     # Alias; scan only current directory
+prf scan --all                       # Scan all categories (default set)
+prf scan --type python ~/Desktop     # Scan only python targets
+prf scan --type rust --verbose .     # Show item-level paths and sizes
+prf scan --list ~/Desktop            # Fast target listing without size calculation
+prf sc --current                     # Alias; scan only current directory
 ```
 
 The delete flow executes via:
 
 ```sh
-pure run ~/Desktop                    # Interactive category selection + confirmation
-pure run --type nodejs -y ~/Desktop   # Non-interactive deletion for one category
-pure run --all -y ~/Desktop           # Delete all categories without prompts
-pure rn --current --type rust -y      # Alias; current-directory scoped cleanup
+prf run ~/Desktop                    # Interactive category selection + confirmation
+prf run --type nodejs -y ~/Desktop   # Non-interactive deletion for one category
+prf run --all -y ~/Desktop           # Delete all categories without prompts
+prf rn --current --type rust -y      # Alias; current-directory scoped cleanup
 ```
 
 Category behavior:
@@ -28,7 +28,7 @@ Category behavior:
 Help displays via:
 
 ```sh
-pure --help
-pure scan --help
-pure run --help
+prf --help
+prf scan --help
+prf run --help
 ```
