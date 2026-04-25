@@ -1,0 +1,43 @@
+name: Run Static Checks
+
+on:
+  workflow_call:
+
+jobs:
+  run-static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Environment
+        uses: ./.github/actions/setup
+        with:
+          components: rustfmt,clippy
+
+      - name: Run Static Checks
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets --all-features -- -D warnings
+        shell: bashname: Run Static Checks
+
+on:
+  workflow_call:
+
+jobs:
+  run-static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Environment
+        uses: ./.github/actions/setup
+        with:
+          components: rustfmt,clippy
+
+      - name: Run Static Checks
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets --all-features -- -D warnings
+        shell: bash

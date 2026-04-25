@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    uses: ./.github/workflows/run-linters.yml
+  static-checks:
+    name: Static Checks
+    uses: ./.github/workflows/run-static-checks.yml
 
   build:
     name: Build
