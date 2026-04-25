@@ -1,5 +1,5 @@
 [package]
-name = "pure"
+name = "prf"
 version = "0.6.0"
 edition = "2024"
 

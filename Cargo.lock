@@ -766,6 +766,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "prf"
+version = "0.6.0"
+dependencies = [
+ "assert_cmd",
+ "assert_fs",
+ "byte-unit",
+ "clap",
+ "dialoguer",
+ "dirs-next",
+ "indicatif",
+ "predicates",
+ "rayon",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "tempfile",
+ "thiserror",
+ "walkdir",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -801,27 +822,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "pure"
-version = "0.6.0"
-dependencies = [
- "assert_cmd",
- "assert_fs",
- "byte-unit",
- "clap",
- "dialoguer",
- "dirs-next",
- "indicatif",
- "predicates",
- "rayon",
- "serde",
- "serde_json",
- "serial_test",
- "tempfile",
- "thiserror",
- "walkdir",
 ]
 
 [[package]]

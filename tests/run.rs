@@ -3,7 +3,7 @@ use assert_fs::prelude::*;
 use predicates::prelude::*;
 
 fn command() -> Command {
-    Command::cargo_bin("pure").expect("binary exists")
+    Command::cargo_bin("prf").expect("binary exists")
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn run_current_skips_brew_category() {
     cache.create_dir_all().unwrap();
     // Add some content to make it detectable
     cache.child("debug").create_dir_all().unwrap();
-    cache.child("debug/pure").write_str("executable").unwrap();
+    cache.child("debug/prf").write_str("executable").unwrap();
 
     let mut cmd = command();
     cmd.current_dir(temp.path())

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use pure::commands::{execute_run, execute_scan};
-use pure::commands::{run::RunOptions, scan::ScanOptions};
-use pure::error::AppError;
-use pure::model::Category;
-use pure::path::resolve_roots_with_current;
+use prf::commands::{execute_run, execute_scan};
+use prf::commands::{run::RunOptions, scan::ScanOptions};
+use prf::error::AppError;
+use prf::model::Category;
+use prf::path::resolve_roots_with_current;
 
 fn main() {
     if let Err(err) = run() {
@@ -48,7 +48,7 @@ fn run() -> Result<(), AppError> {
 }
 
 #[derive(Parser)]
-#[command(name = "pure", version, about = "Safely clean macOS caches from the terminal.")]
+#[command(name = "prf", version, about = "Safely clean macOS caches from the terminal.")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
