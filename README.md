@@ -1,8 +1,8 @@
 # prf
 
-prf is a desktop-focused command-line cleaner derived from 'purify'.
+prf is a macOS command-line cleaner for development caches and generated artifacts.
 
-`prf` scans development caches and build artifacts in desktop projects to help reclaim disk
+`prf` scans project-local build outputs and vetted tool caches to help reclaim disk
 space. Scans are dry-run by default, and deletion requires explicit confirmation unless `-y/--yes`
 is supplied.
 

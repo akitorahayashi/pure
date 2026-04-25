@@ -47,7 +47,11 @@ fn run() -> Result<(), AppError> {
 }
 
 #[derive(Parser)]
-#[command(name = "prf", version, about = "Safely clean macOS caches from the terminal.")]
+#[command(
+    name = "prf",
+    version,
+    about = "Safely clean development caches and generated artifacts on macOS."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
