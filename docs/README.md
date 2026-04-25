@@ -1,10 +1,8 @@
-# Documentation
+# pure Documentation
 
-This directory stores repository-level documentation for development operations and CI/CD behavior.
+## Table of Contents
 
-Current operational contract:
-- Local setup is driven by `just setup`.
-- Verification is driven by `just check` and `just test`.
-- Coverage is collected by `just coverage`.
-- CI workflows delegate static checks, tests, coverage, and build to reusable workflows.
-- Reusable workflows invoke repository recipes through `mise exec -- just <recipe>`.
+- [Usage](usage.md): User-facing command flows for scanning and deletion.
+- [Architecture](architecture.md): Boundaries, execution model, and safety invariants.
+- [Configuration](configuration.md): Repository configuration files and CI/CD contracts.
+- [Testing](testing.md): Test boundaries, principles, and execution commands.
