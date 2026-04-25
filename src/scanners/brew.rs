@@ -35,6 +35,12 @@ impl BrewScanner {
     }
 }
 
+impl Default for BrewScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CategoryScanner for BrewScanner {
     fn scan(&self, _roots: &[PathBuf], _verbose: bool) -> Result<Vec<ScanItem>, AppError> {
         self.collect_directories(Self::brew_paths())

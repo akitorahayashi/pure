@@ -13,6 +13,12 @@ impl NodejsScanner {
     }
 }
 
+impl Default for NodejsScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl std::ops::Deref for NodejsScanner {
     type Target = GenericScanner;
 

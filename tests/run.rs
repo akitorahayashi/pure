@@ -15,12 +15,7 @@ fn run_type_dev_yes_deletes_directories() {
     cache.child("index.js").write_str("console.log('cache');").unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .arg("run")
-        .arg("--type")
-        .arg("nodejs")
-        .arg("-y")
-        .arg(temp.path());
+    cmd.env("HOME", temp.path()).arg("run").arg("--type").arg("nodejs").arg("-y").arg(temp.path());
 
     cmd.assert().success().stdout(predicate::str::contains("Attempted to delete"));
 
@@ -61,12 +56,7 @@ fn run_current_skips_brew_category() {
     env::set_current_dir(temp.path()).unwrap();
 
     let mut cmd = command();
-    cmd.env("HOME", temp.path())
-        .arg("run")
-        .arg("--current")
-        .arg("--type")
-        .arg("rust")
-        .arg("-y");
+    cmd.env("HOME", temp.path()).arg("run").arg("--current").arg("--type").arg("rust").arg("-y");
 
     let output = cmd.assert().success();
 

@@ -6,17 +6,13 @@ use super::CategoryScanner;
 use crate::error::AppError;
 use crate::model::{Category, ScanItem};
 
-
 pub struct GenericScanner {
     category: Category,
     targets: &'static [&'static str],
 }
 
 impl GenericScanner {
-    pub fn new(
-        category: Category,
-        targets: &'static [&'static str],
-    ) -> Self {
+    pub fn new(category: Category, targets: &'static [&'static str]) -> Self {
         Self { category, targets }
     }
 }
@@ -46,7 +42,11 @@ impl CategoryScanner for GenericScanner {
                 if entry.file_type().is_dir() {
                     let name = entry.file_name().to_string_lossy();
                     if target_names.contains(name.as_ref()) {
-                        items.push(ScanItem::directory(self.category, entry.path().to_path_buf(), 0));
+                        items.push(ScanItem::directory(
+                            self.category,
+                            entry.path().to_path_buf(),
+                            0,
+                        ));
                         walker.skip_current_dir();
                     }
                 }

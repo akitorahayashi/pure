@@ -224,10 +224,7 @@ fn print_summary(report: &ScanReport, verbose: bool) {
     println!("Total to delete: {}", format_bytes(report.total_size()));
 }
 
-fn delete_items(
-    items: &[ScanItem],
-    progress: &Arc<MultiProgress>,
-) -> Result<(), AppError> {
+fn delete_items(items: &[ScanItem], progress: &Arc<MultiProgress>) -> Result<(), AppError> {
     use crate::model::ItemKind;
     use std::fs;
     use std::io;

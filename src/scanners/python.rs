@@ -14,6 +14,12 @@ impl PythonScanner {
     }
 }
 
+impl Default for PythonScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl std::ops::Deref for PythonScanner {
     type Target = GenericScanner;
 

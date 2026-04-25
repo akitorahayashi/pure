@@ -22,8 +22,7 @@ pub struct ScanOptions {
 
 pub fn execute_scan(options: ScanOptions) -> Result<ScanReport, AppError> {
     if options.list {
-        let list_results =
-            list_targets(&options.categories, &options.roots, options.current)?;
+        let list_results = list_targets(&options.categories, &options.roots, options.current)?;
         print_list_results(&list_results);
         // Return empty report for --list mode
         Ok(ScanReport::new())
@@ -54,15 +53,7 @@ pub(crate) fn scan_categories(
 
     if should_scan_docker {
         let (fs_result, docker_result) = rayon::join(
-            || {
-                run_filesystem_scan(
-                    &fs_categories,
-                    roots,
-                    verbose,
-                    current,
-                    progress,
-                )
-            },
+            || run_filesystem_scan(&fs_categories, roots, verbose, current, progress),
             || scan_docker(verbose),
         );
 
@@ -265,9 +256,7 @@ fn print_list_results(results: &BTreeMap<Category, Vec<String>>) {
     }
 }
 
-pub fn get_scanners(
-    current: bool,
-) -> Vec<Box<dyn CategoryScanner>> {
+pub fn get_scanners(current: bool) -> Vec<Box<dyn CategoryScanner>> {
     let mut scanners: Vec<Box<dyn CategoryScanner>> = vec![
         Box::new(XcodeScanner::new(current)),
         Box::new(PythonScanner::new()),

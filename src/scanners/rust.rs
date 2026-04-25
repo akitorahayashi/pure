@@ -13,6 +13,12 @@ impl RustScanner {
     }
 }
 
+impl Default for RustScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl std::ops::Deref for RustScanner {
     type Target = GenericScanner;
 

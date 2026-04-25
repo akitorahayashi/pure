@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use pure::commands::{run::RunOptions, scan::ScanOptions};
 use pure::commands::{execute_run, execute_scan};
+use pure::commands::{run::RunOptions, scan::ScanOptions};
 use pure::error::AppError;
 use pure::model::Category;
 use pure::path::resolve_roots_with_current;
