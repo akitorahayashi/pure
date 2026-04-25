@@ -3,7 +3,7 @@ use assert_fs::prelude::*;
 use predicates::prelude::*;
 
 fn command() -> Command {
-    Command::cargo_bin("pure").expect("binary exists")
+    Command::cargo_bin("prf").expect("binary exists")
 }
 
 #[test]

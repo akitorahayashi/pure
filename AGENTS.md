@@ -1,7 +1,7 @@
-# pure Development Notes
+# prf Development Notes
 
 ## Project Summary
-`pure` is a Rust CLI that scans and cleans macOS caches. The binary exposes three primary
+`prf` is a Rust CLI that scans and cleans macOS caches. The binary exposes three primary
 subcommands:
 - `scan`: dry-run discovery of reclaimable disk space per category.
 - `run`: deletion workflow (interactive by default, supports `--type`, `--all`, `-y`).
