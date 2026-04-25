@@ -8,6 +8,12 @@ const PYTHON_TARGETS: &[&str] =
 
 pub struct PythonScanner(GenericScanner);
 
+impl Default for PythonScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PythonScanner {
     pub fn new() -> Self {
         Self(GenericScanner::new(Category::Python, PYTHON_TARGETS))

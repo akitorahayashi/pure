@@ -50,8 +50,8 @@ pub fn path_size(path: &Path, verbose: bool) -> Result<u64, AppError> {
         Ok(path.metadata()?.len())
     } else {
         let mut total = 0u64;
-        let mut walker = WalkDir::new(path).into_iter();
-        while let Some(entry) = walker.next() {
+        let walker = WalkDir::new(path).into_iter();
+        for entry in walker {
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(err) => {
@@ -85,8 +85,8 @@ pub fn safe_remove_dir_all(path: &Path, verbose: bool) -> Result<(), AppError> {
     let mut files_to_remove = Vec::new();
     let mut dirs_to_remove = Vec::new();
 
-    let mut walker = WalkDir::new(path).into_iter();
-    while let Some(entry_result) = walker.next() {
+    let walker = WalkDir::new(path).into_iter();
+    for entry_result in walker {
         let entry = match entry_result {
             Ok(entry) => entry,
             Err(err) => {

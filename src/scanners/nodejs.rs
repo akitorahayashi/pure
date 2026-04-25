@@ -7,6 +7,12 @@ const NODEJS_TARGETS: &[&str] = &["node_modules", ".next", ".nuxt", ".svelte-kit
 
 pub struct NodejsScanner(GenericScanner);
 
+impl Default for NodejsScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodejsScanner {
     pub fn new() -> Self {
         Self(GenericScanner::new(Category::Nodejs, NODEJS_TARGETS))

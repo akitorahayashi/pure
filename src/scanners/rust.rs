@@ -7,6 +7,12 @@ const RUST_TARGETS: &[&str] = &["target"];
 
 pub struct RustScanner(GenericScanner);
 
+impl Default for RustScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RustScanner {
     pub fn new() -> Self {
         Self(GenericScanner::new(Category::Rust, RUST_TARGETS))

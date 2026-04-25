@@ -7,6 +7,7 @@ use crate::model::{Category, ScanItem};
 
 use super::CategoryScanner;
 
+#[derive(Default)]
 pub struct BrewScanner;
 
 impl BrewScanner {
