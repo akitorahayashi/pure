@@ -1,3 +1,6 @@
 /target
 .tmp/*
-.claude/settings.local.json
+reference/*
+
+# Coverage
+coverage/*
