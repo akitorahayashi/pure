@@ -148,7 +148,7 @@ fn compute_sizes_parallel(
         if item.is_zero() {
             item.size = match item.kind {
                 ItemKind::Directory => path_size(&item.path, verbose)?,
-                ItemKind::File => item.path.metadata()?.len(),
+                ItemKind::File => item.path.metadata().map(|m| m.len()).unwrap_or(0),
             };
         }
         if let Some(pb) = progress {

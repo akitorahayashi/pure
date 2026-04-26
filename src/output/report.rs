@@ -9,9 +9,7 @@ use crate::targets::report::ScanReport;
 use super::bytes::format_bytes;
 
 pub fn display_path(path: &Path) -> String {
-    if let Some(home) = dirs::home_dir()
-        && let Ok(stripped) = path.strip_prefix(&home)
-    {
+    if let Some(stripped) = dirs::home_dir().and_then(|home| path.strip_prefix(&home).ok()) {
         let mut display = PathBuf::from("~");
         display.push(stripped);
         return display.display().to_string();

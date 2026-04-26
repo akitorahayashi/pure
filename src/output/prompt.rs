@@ -42,9 +42,8 @@ pub fn prompt_for_categories(
             continue;
         }
 
-        if let Ok(index) = token.parse::<usize>()
-            && index >= 1
-            && index <= available_categories.len()
+        if let Some(index) =
+            token.parse::<usize>().ok().filter(|&i| i >= 1 && i <= available_categories.len())
         {
             let category = available_categories[index - 1];
             if !selected.contains(&category) {
@@ -53,8 +52,8 @@ pub fn prompt_for_categories(
             continue;
         }
 
-        if let Ok(category) = token.parse::<Category>()
-            && available_categories.contains(&category)
+        if let Some(category) =
+            token.parse::<Category>().ok().filter(|c| available_categories.contains(c))
         {
             if !selected.contains(&category) {
                 selected.push(category);
