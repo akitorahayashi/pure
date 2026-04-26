@@ -1,28 +1,34 @@
 use std::collections::{BTreeMap, HashSet};
-use std::path::PathBuf;
+
 use walkdir::WalkDir;
 
-use super::CategoryScanner;
 use crate::error::AppError;
-use crate::model::{Category, ScanItem};
 
-pub struct GenericScanner {
+use super::category::Category;
+use super::item::CleanupItem;
+use super::target::{CleanupTarget, ScanScope};
+
+pub struct NameMatcherTarget {
     category: Category,
     targets: &'static [&'static str],
 }
 
-impl GenericScanner {
+impl NameMatcherTarget {
     pub fn new(category: Category, targets: &'static [&'static str]) -> Self {
         Self { category, targets }
     }
 }
 
-impl CategoryScanner for GenericScanner {
-    fn scan(&self, roots: &[PathBuf], verbose: bool) -> Result<Vec<ScanItem>, AppError> {
+impl CleanupTarget for NameMatcherTarget {
+    fn category(&self) -> Category {
+        self.category
+    }
+
+    fn discover(&self, scope: &ScanScope) -> Result<Vec<CleanupItem>, AppError> {
         let mut items = Vec::new();
         let target_names: HashSet<&str> = self.targets.iter().copied().collect();
 
-        for root in roots {
+        for root in scope.roots() {
             if !root.exists() {
                 continue;
             }
@@ -32,7 +38,7 @@ impl CategoryScanner for GenericScanner {
                 let entry = match entry {
                     Ok(entry) => entry,
                     Err(err) => {
-                        if verbose {
+                        if scope.verbose {
                             eprintln!("Skipping {:?}: {}", err.path(), err);
                         }
                         continue;
@@ -42,7 +48,7 @@ impl CategoryScanner for GenericScanner {
                 if entry.file_type().is_dir() {
                     let name = entry.file_name().to_string_lossy();
                     if target_names.contains(name.as_ref()) {
-                        items.push(ScanItem::directory(
+                        items.push(CleanupItem::directory(
                             self.category,
                             entry.path().to_path_buf(),
                             0,
@@ -56,16 +62,12 @@ impl CategoryScanner for GenericScanner {
         Ok(items)
     }
 
-    fn category(&self) -> Category {
-        self.category
-    }
-
-    fn list_targets(&self, roots: &[PathBuf]) -> Result<Vec<String>, AppError> {
+    fn list(&self, scope: &ScanScope) -> Result<Vec<String>, AppError> {
         let mut targets = Vec::new();
         let target_names: HashSet<&str> = self.targets.iter().copied().collect();
         let mut type_counts: BTreeMap<String, usize> = BTreeMap::new();
 
-        for root in roots {
+        for root in scope.roots() {
             if !root.exists() {
                 continue;
             }

@@ -11,6 +11,9 @@ pub enum AppError {
     #[error("Unknown category '{0}'")]
     InvalidCategory(String),
 
+    #[error("Category not supported with --current: {0}")]
+    UnsupportedCurrentModeCategory(String),
+
     #[error("Operation cancelled by user")]
     Cancelled,
 }

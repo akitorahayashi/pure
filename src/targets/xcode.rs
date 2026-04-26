@@ -1,17 +1,20 @@
-use super::CategoryScanner;
-use crate::error::AppError;
-use crate::model::{Category, ItemKind, ScanItem};
-
-use dirs_next as dirs;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use dirs_next as dirs;
 use walkdir::WalkDir;
 
-pub struct XcodeScanner {
+use crate::error::AppError;
+
+use super::category::Category;
+use super::item::{CleanupItem, ItemKind};
+use super::target::{CleanupTarget, ScanScope};
+
+pub struct XcodeTarget {
     current: bool,
 }
 
-impl XcodeScanner {
+impl XcodeTarget {
     pub fn new(current: bool) -> Self {
         Self { current }
     }
@@ -32,12 +35,17 @@ impl XcodeScanner {
         paths
     }
 
-    fn add_path(&self, path: &Path, items: &mut Vec<ScanItem>) {
+    fn add_path(&self, path: &Path, items: &mut Vec<CleanupItem>) {
         let kind = if path.is_file() { ItemKind::File } else { ItemKind::Directory };
-        items.push(ScanItem { category: Category::Xcode, path: path.to_path_buf(), size: 0, kind });
+        items.push(CleanupItem {
+            category: Category::Xcode,
+            path: path.to_path_buf(),
+            size: 0,
+            kind,
+        });
     }
 
-    fn collect_swiftpm_artifacts(&self, parent: &Path, items: &mut Vec<ScanItem>) {
+    fn collect_swiftpm_artifacts(&self, parent: &Path, items: &mut Vec<CleanupItem>) {
         const ARTIFACTS: &[&str] = &[".build", ".swiftpm"];
         for artifact in ARTIFACTS {
             let artifact_path = parent.join(artifact);
@@ -47,7 +55,7 @@ impl XcodeScanner {
         }
     }
 
-    fn scan_global_caches(&self) -> Vec<ScanItem> {
+    fn scan_global_caches(&self) -> Vec<CleanupItem> {
         let mut items = Vec::new();
         for path in Self::global_safe_paths() {
             if path.exists() {
@@ -57,11 +65,11 @@ impl XcodeScanner {
         items
     }
 
-    fn scan_local_projects(&self, roots: &[PathBuf], verbose: bool) -> Vec<ScanItem> {
+    fn scan_local_projects(&self, scope: &ScanScope) -> Vec<CleanupItem> {
         let mut items = Vec::new();
         let mut processed_packages: HashSet<PathBuf> = HashSet::new();
 
-        for root in roots {
+        for root in scope.roots() {
             if !root.exists() {
                 continue;
             }
@@ -71,7 +79,7 @@ impl XcodeScanner {
                 let entry = match entry {
                     Ok(entry) => entry,
                     Err(err) => {
-                        if verbose {
+                        if scope.verbose {
                             eprintln!("Skipping {:?}: {}", err.path(), err);
                         }
                         continue;
@@ -79,7 +87,6 @@ impl XcodeScanner {
                 };
 
                 let path = entry.path();
-
                 let file_name = entry.file_name().to_string_lossy();
 
                 if entry.file_type().is_dir() && file_name == "DerivedData" {
@@ -111,12 +118,12 @@ impl XcodeScanner {
         targets
     }
 
-    fn list_local_targets(&self, roots: &[PathBuf]) -> Vec<String> {
+    fn list_local_targets(&self, scope: &ScanScope) -> Vec<String> {
         let mut targets = Vec::new();
         let mut derived_data = 0usize;
         let mut swiftpm_projects = 0usize;
 
-        for root in roots {
+        for root in scope.roots() {
             if !root.exists() {
                 continue;
             }
@@ -125,10 +132,7 @@ impl XcodeScanner {
             while let Some(entry) = walker.next() {
                 let entry = match entry {
                     Ok(entry) => entry,
-                    Err(err) => {
-                        eprintln!("Skipping {:?}: {}", err.path(), err);
-                        continue;
-                    }
+                    Err(_) => continue,
                 };
 
                 let file_name = entry.file_name().to_string_lossy();
@@ -161,9 +165,13 @@ impl XcodeScanner {
     }
 }
 
-impl CategoryScanner for XcodeScanner {
-    fn scan(&self, roots: &[PathBuf], verbose: bool) -> Result<Vec<ScanItem>, AppError> {
-        let mut items = self.scan_local_projects(roots, verbose);
+impl CleanupTarget for XcodeTarget {
+    fn category(&self) -> Category {
+        Category::Xcode
+    }
+
+    fn discover(&self, scope: &ScanScope) -> Result<Vec<CleanupItem>, AppError> {
+        let mut items = self.scan_local_projects(scope);
         if !self.current {
             let mut global_items = self.scan_global_caches();
             items.append(&mut global_items);
@@ -171,12 +179,8 @@ impl CategoryScanner for XcodeScanner {
         Ok(items)
     }
 
-    fn category(&self) -> Category {
-        Category::Xcode
-    }
-
-    fn list_targets(&self, roots: &[PathBuf]) -> Result<Vec<String>, AppError> {
-        let mut targets = self.list_local_targets(roots);
+    fn list(&self, scope: &ScanScope) -> Result<Vec<String>, AppError> {
+        let mut targets = self.list_local_targets(scope);
         if !self.current {
             let mut global = self.list_global_targets();
             targets.append(&mut global);
@@ -187,24 +191,25 @@ impl CategoryScanner for XcodeScanner {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use assert_fs::TempDir;
     use assert_fs::prelude::*;
     use serial_test::serial;
     use std::env;
 
-    #[test]
-    fn scan_detects_local_derived_data() {
-        let temp = TempDir::new().unwrap();
-        let project_root = temp.child("workspace");
-        project_root.create_dir_all().unwrap();
-        let derived = project_root.child("DerivedData/cache");
-        derived.create_dir_all().unwrap();
-        derived.child("foo.txt").write_str("cache").unwrap();
+    use super::*;
 
-        let scanner = XcodeScanner::new(false);
-        let items =
-            scanner.scan(&[project_root.path().to_path_buf()], true).expect("scan succeeds");
+    #[test]
+    fn discover_detects_local_derived_data() {
+        let temp = TempDir::new().expect("temp directory is created");
+        let project_root = temp.child("workspace");
+        project_root.create_dir_all().expect("workspace exists");
+        let derived = project_root.child("DerivedData/cache");
+        derived.create_dir_all().expect("derived data exists");
+        derived.child("foo.txt").write_str("cache").expect("cache file exists");
+
+        let target = XcodeTarget::new(false);
+        let scope = ScanScope::new(vec![project_root.path().to_path_buf()], false, true);
+        let items = target.discover(&scope).expect("scan succeeds");
 
         assert!(
             items.iter().any(|item| item.path.ends_with("DerivedData")),
@@ -213,24 +218,25 @@ mod tests {
     }
 
     #[test]
-    fn scan_detects_swiftpm_artifacts_only_with_package_swift() {
-        let temp = TempDir::new().unwrap();
+    fn discover_detects_swiftpm_artifacts_only_with_package_swift() {
+        let temp = TempDir::new().expect("temp directory is created");
         let roots = temp.child("workspace");
-        roots.create_dir_all().unwrap();
+        roots.create_dir_all().expect("workspace exists");
 
         let pkg = roots.child("AppWithPackage");
-        pkg.create_dir_all().unwrap();
-        pkg.child("Package.swift").write_str("// swift package").unwrap();
-        pkg.child(".build/output.o").write_str("bin").unwrap();
-        pkg.child(".swiftpm/config").write_str("cfg").unwrap();
-        pkg.child("Package.resolved").write_str("deps").unwrap();
+        pkg.create_dir_all().expect("package workspace exists");
+        pkg.child("Package.swift").write_str("// swift package").expect("package file exists");
+        pkg.child(".build/output.o").write_str("bin").expect("build artifact exists");
+        pkg.child(".swiftpm/config").write_str("cfg").expect("swiftpm artifact exists");
+        pkg.child("Package.resolved").write_str("deps").expect("resolved file exists");
 
         let no_pkg = roots.child("AppWithoutPackage");
-        no_pkg.create_dir_all().unwrap();
-        no_pkg.child(".build/output.o").write_str("bin").unwrap();
+        no_pkg.create_dir_all().expect("non-package workspace exists");
+        no_pkg.child(".build/output.o").write_str("bin").expect("build artifact exists");
 
-        let scanner = XcodeScanner::new(false);
-        let items = scanner.scan(&[roots.path().to_path_buf()], true).expect("scan succeeds");
+        let target = XcodeTarget::new(false);
+        let scope = ScanScope::new(vec![roots.path().to_path_buf()], false, true);
+        let items = target.discover(&scope).expect("scan succeeds");
 
         assert!(
             items.iter().any(|item| item.path.to_string_lossy().contains("AppWithPackage/.build")),
@@ -253,25 +259,26 @@ mod tests {
             !items
                 .iter()
                 .any(|item| item.path.to_string_lossy().contains("AppWithoutPackage/.build")),
-            "Projects without Package.swift should be ignored"
+            "projects without Package.swift should be ignored"
         );
     }
 
     #[test]
     #[serial]
-    fn scan_global_caches_respects_current_flag() {
-        let temp_home = TempDir::new().unwrap();
+    fn discover_global_caches_respects_current_flag() {
+        let temp_home = TempDir::new().expect("temp home is created");
         let derived = temp_home.child("Library/Developer/Xcode/DerivedData/project");
-        derived.create_dir_all().unwrap();
-        derived.child("foo.txt").write_str("cache").unwrap();
+        derived.create_dir_all().expect("derived data exists");
+        derived.child("foo.txt").write_str("cache").expect("cache file exists");
 
         let original_home = env::var("HOME").ok();
         unsafe {
             env::set_var("HOME", temp_home.path());
         }
 
-        let scanner = XcodeScanner::new(false);
-        let items = scanner.scan(&[], false).expect("scan succeeds");
+        let scope = ScanScope::new(Vec::new(), false, false);
+        let target = XcodeTarget::new(false);
+        let items = target.discover(&scope).expect("scan succeeds");
         assert!(
             items.iter().any(|item| item
                 .path
@@ -280,8 +287,9 @@ mod tests {
             "global caches should be detected when not in current-only mode"
         );
 
-        let current_scanner = XcodeScanner::new(true);
-        let current_items = current_scanner.scan(&[], false).expect("scan succeeds");
+        let current_scope = ScanScope::new(Vec::new(), true, false);
+        let current_target = XcodeTarget::new(true);
+        let current_items = current_target.discover(&current_scope).expect("scan succeeds");
         assert!(current_items.is_empty(), "--current should skip global caches");
 
         if let Some(home) = original_home {

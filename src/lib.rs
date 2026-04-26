@@ -1,9 +1,13 @@
 //! Library entry point for the prf CLI (purify).
 
-pub mod commands;
-pub mod docker_cleanup;
+pub mod app;
 pub mod error;
-pub mod format;
-pub mod model;
-pub mod path;
-pub mod scanners;
+pub mod fs;
+pub mod output;
+pub mod targets;
+
+#[path = "cli/mod.rs"]
+mod cli_entry;
+
+pub use cli_entry::run as cli;
+pub use error::AppError;
