@@ -19,9 +19,8 @@ impl BrewTarget {
         let mut paths = Vec::new();
         if let Some(home) = dirs::home_dir() {
             paths.push(home.join("Library/Caches/Homebrew"));
+            paths.push(home.join("Library/Logs/Homebrew"));
         }
-        paths.push(PathBuf::from("/opt/homebrew/Library/Caches"));
-        paths.push(PathBuf::from("/usr/local/Homebrew/Library/Logs"));
         paths
     }
 }

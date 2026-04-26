@@ -48,8 +48,22 @@ pub fn scan_categories(
         return Ok(ScanReport::new());
     }
 
-    let targets = catalog::build_targets(categories, scope.current);
+    let targets = catalog::build_targets(categories, scope.current());
     if targets.is_empty() {
+        if scope.current() {
+            let requested_unique = catalog::unique_categories(categories.to_vec());
+            let unsupported = catalog::unsupported_for_current(&requested_unique);
+            if !unsupported.is_empty() && unsupported.len() == requested_unique.len() {
+                let names = unsupported
+                    .iter()
+                    .map(|category| category.display_name())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                return Err(AppError::NoTargetsToScan(format!(
+                    "requested categories disabled in --current mode: {names}"
+                )));
+            }
+        }
         return Ok(ScanReport::new());
     }
 
@@ -88,7 +102,7 @@ pub fn scan_categories(
     let total_items = discovered_items.len();
     let size_bar = progress.add(ProgressBar::new(total_items as u64));
     size_bar.set_style(size_progress_style());
-    compute_sizes_parallel(&mut discovered_items, scope.verbose, Some(&size_bar))?;
+    compute_sizes_parallel(&mut discovered_items, scope.verbose(), Some(&size_bar))?;
     size_bar.finish_and_clear();
 
     let _ = progress.println(format!(
@@ -99,16 +113,9 @@ pub fn scan_categories(
         if total_items == 1 { "" } else { "s" }
     ));
 
-    let mut grouped: BTreeMap<Category, Vec<CleanupItem>> = BTreeMap::new();
-    for item in discovered_items {
-        grouped.entry(item.category).or_default().push(item);
-    }
-
     let mut report = ScanReport::new();
-    for (category, items) in grouped {
-        if !items.is_empty() {
-            report.add_items(category, items);
-        }
+    for item in discovered_items {
+        report.add_items(item.category, vec![item]);
     }
 
     Ok(report)
@@ -118,7 +125,7 @@ fn list_targets(
     categories: &[Category],
     scope: &ScanScope,
 ) -> Result<BTreeMap<Category, Vec<String>>, AppError> {
-    let targets = catalog::build_targets(categories, scope.current);
+    let targets = catalog::build_targets(categories, scope.current());
     if targets.is_empty() {
         return Ok(BTreeMap::new());
     }
@@ -148,7 +155,15 @@ fn compute_sizes_parallel(
         if item.is_zero() {
             item.size = match item.kind {
                 ItemKind::Directory => path_size(&item.path, verbose)?,
-                ItemKind::File => item.path.metadata().map(|m| m.len()).unwrap_or(0),
+                ItemKind::File => match item.path.metadata() {
+                    Ok(metadata) => metadata.len(),
+                    Err(err) => {
+                        if verbose {
+                            eprintln!("Skipping {}: {}", item.path.display(), err);
+                        }
+                        0
+                    }
+                },
             };
         }
         if let Some(pb) = progress {

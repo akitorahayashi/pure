@@ -8,8 +8,8 @@ use super::item::CleanupItem;
 #[derive(Debug, Clone)]
 pub struct ScanScope {
     roots: Vec<PathBuf>,
-    pub current: bool,
-    pub verbose: bool,
+    current: bool,
+    verbose: bool,
 }
 
 impl ScanScope {
@@ -19,6 +19,14 @@ impl ScanScope {
 
     pub fn roots(&self) -> &[PathBuf] {
         &self.roots
+    }
+
+    pub fn current(&self) -> bool {
+        self.current
+    }
+
+    pub fn verbose(&self) -> bool {
+        self.verbose
     }
 }
 

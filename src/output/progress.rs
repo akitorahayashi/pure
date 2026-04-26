@@ -5,12 +5,14 @@ pub fn discovery_spinner_style() -> ProgressStyle {
 }
 
 pub fn size_progress_style() -> ProgressStyle {
-    ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6}")
-        .unwrap()
-        .progress_chars("=|-")
+    shared_progress_style()
 }
 
 pub fn deletion_progress_style() -> ProgressStyle {
+    shared_progress_style()
+}
+
+fn shared_progress_style() -> ProgressStyle {
     ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>6}/{len:>6}")
         .unwrap()
         .progress_chars("=|-")

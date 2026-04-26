@@ -6,7 +6,7 @@ use super::name_matcher::NameMatcherTarget;
 use super::target::{CleanupTarget, ScanScope};
 
 const PYTHON_TARGETS: &[&str] =
-    &["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", ".uv-cache"];
+    &["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv"];
 
 pub struct PythonTarget(NameMatcherTarget);
 

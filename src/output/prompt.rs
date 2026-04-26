@@ -42,14 +42,22 @@ pub fn prompt_for_categories(
             continue;
         }
 
-        if let Some(index) =
-            token.parse::<usize>().ok().filter(|&i| i >= 1 && i <= available_categories.len())
-        {
+        if let Ok(index) = token.parse::<usize>() {
+            if index < 1 || index > available_categories.len() {
+                return Err(AppError::CategoryIndexOutOfRange(token.to_string()));
+            }
+
             let category = available_categories[index - 1];
             if !selected.contains(&category) {
                 selected.push(category);
             }
             continue;
+        }
+
+        if token.chars().any(|ch| ch.is_ascii_digit())
+            && token.chars().any(|ch| ch.is_ascii_alphabetic())
+        {
+            return Err(AppError::InvalidCategory(token.to_string()));
         }
 
         if let Some(category) =

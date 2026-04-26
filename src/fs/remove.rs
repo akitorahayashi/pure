@@ -33,10 +33,10 @@ pub fn safe_remove_dir_all(path: &Path, verbose: bool) -> Result<(), AppError> {
             }
         };
 
-        if entry.file_type().is_file() {
+        if entry.file_type().is_file() || entry.file_type().is_symlink() {
             files_to_remove.push(entry.into_path());
         } else if entry.file_type().is_dir() {
-            dirs_to_remove.push(entry.into_path());
+            dirs_to_remove.push((entry.depth(), entry.into_path()));
         }
     }
 
@@ -48,13 +48,19 @@ pub fn safe_remove_dir_all(path: &Path, verbose: bool) -> Result<(), AppError> {
         }
     }
 
-    dirs_to_remove.sort_by_key(|candidate| std::cmp::Reverse(candidate.as_os_str().len()));
-    for dir in &dirs_to_remove {
+    dirs_to_remove.sort_by_key(|(depth, _)| std::cmp::Reverse(*depth));
+    for (_, dir) in &dirs_to_remove {
         match fs::remove_dir(dir) {
             Ok(()) => {}
-            Err(err)
-                if err.kind() == io::ErrorKind::NotFound
-                    || err.kind() == io::ErrorKind::DirectoryNotEmpty => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) if err.kind() == io::ErrorKind::DirectoryNotEmpty => {
+                if verbose {
+                    eprintln!(
+                        "Directory not empty after cleanup pass, skipping: {}",
+                        dir.display()
+                    );
+                }
+            }
             Err(err) => return Err(AppError::Io(err)),
         }
     }

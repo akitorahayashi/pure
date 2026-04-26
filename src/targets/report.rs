@@ -34,6 +34,7 @@ impl ScanReport {
     }
 
     pub fn add_items(&mut self, category: Category, mut items: Vec<CleanupItem>) {
+        debug_assert!(items.iter().all(|item| item.category == category));
         let entry =
             self.categories.entry(category).or_insert_with(|| CategoryReport::new(category));
         entry.items.append(&mut items);

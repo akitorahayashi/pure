@@ -29,7 +29,7 @@ impl CleanupItem {
         self.size == 0
     }
 
-    pub fn path_str(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 }

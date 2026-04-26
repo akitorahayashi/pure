@@ -1,6 +1,7 @@
 use std::io;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use byte_unit::Byte;
 
@@ -11,8 +12,9 @@ use super::item::CleanupItem;
 use super::target::{CleanupTarget, ScanScope};
 
 const DOCKER_SCAN_LABEL: &str = "docker:prune";
+static DOCKER_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
-fn is_docker_available() -> bool {
+fn probe_docker_available() -> bool {
     Command::new("docker")
         .arg("info")
         .stdout(Stdio::null())
@@ -22,8 +24,31 @@ fn is_docker_available() -> bool {
         .unwrap_or(false)
 }
 
+fn docker_available() -> bool {
+    *DOCKER_AVAILABLE.get_or_init(probe_docker_available)
+}
+
+fn parse_reclaimable_size(size_token: &str) -> Option<Byte> {
+    if let Ok(size) = Byte::parse_str(size_token, true) {
+        return Some(size);
+    }
+
+    let split_index = size_token
+        .char_indices()
+        .find(|(_, ch)| !(ch.is_ascii_digit() || *ch == '.'))
+        .map(|(index, _)| index)?;
+
+    let (num, unit) = size_token.split_at(split_index);
+    if num.is_empty() || unit.trim().is_empty() {
+        return None;
+    }
+
+    let normalized = format!("{} {}", num, unit.trim());
+    Byte::parse_str(&normalized, true).ok()
+}
+
 pub fn run_cleanup(verbose: bool) -> Result<(), AppError> {
-    if !is_docker_available() {
+    if !docker_available() {
         return Err(io::Error::new(io::ErrorKind::NotFound, "Docker CLI not available").into());
     }
 
@@ -51,6 +76,10 @@ impl DockerTarget {
     pub fn new() -> Self {
         Self
     }
+
+    fn available(&self) -> bool {
+        docker_available()
+    }
 }
 
 impl Default for DockerTarget {
@@ -65,8 +94,8 @@ impl CleanupTarget for DockerTarget {
     }
 
     fn discover(&self, scope: &ScanScope) -> Result<Vec<CleanupItem>, AppError> {
-        if !is_docker_available() {
-            if scope.verbose {
+        if !self.available() {
+            if scope.verbose() {
                 println!("Docker CLI not available, skipping Docker scan.");
             }
             return Ok(Vec::new());
@@ -81,7 +110,7 @@ impl CleanupTarget for DockerTarget {
             } else {
                 format!("'docker system df' failed: {}", stderr.trim())
             };
-            if scope.verbose {
+            if scope.verbose() {
                 eprintln!("{message}");
             }
             return Ok(Vec::new());
@@ -110,7 +139,7 @@ impl CleanupTarget for DockerTarget {
                 continue;
             };
 
-            if let Ok(size) = size_token.parse::<Byte>() {
+            if let Some(size) = parse_reclaimable_size(size_token) {
                 total = total.saturating_add(size.as_u64());
             }
         }
@@ -118,6 +147,8 @@ impl CleanupTarget for DockerTarget {
         if total == 0 {
             Ok(Vec::new())
         } else {
+            // This synthetic token is routed by run orchestration as a Docker command marker,
+            // not a real filesystem path for generic remove_item/safe_remove_dir_all handling.
             Ok(vec![CleanupItem::directory(
                 Category::Docker,
                 PathBuf::from(DOCKER_SCAN_LABEL),
@@ -127,7 +158,7 @@ impl CleanupTarget for DockerTarget {
     }
 
     fn list(&self, _scope: &ScanScope) -> Result<Vec<String>, AppError> {
-        if !is_docker_available() {
+        if !self.available() {
             return Ok(Vec::new());
         }
 

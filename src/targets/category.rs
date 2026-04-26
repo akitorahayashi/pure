@@ -39,14 +39,14 @@ impl Category {
             Category::Xcode => "Xcode",
             Category::Python => "Python",
             Category::Rust => "Rust",
-            Category::Nodejs => "NodeJS",
+            Category::Nodejs => "Node.js",
             Category::Brew => "Homebrew",
             Category::Docker => "Docker",
         }
     }
 
-    pub fn supports_current_mode(&self) -> bool {
-        !matches!(self, Category::Brew | Category::Docker)
+    pub fn supports_current_mode(&self, current: bool) -> bool {
+        !current || !matches!(self, Category::Brew | Category::Docker)
     }
 }
 

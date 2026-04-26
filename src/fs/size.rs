@@ -8,6 +8,14 @@ pub fn path_size(path: &Path, verbose: bool) -> Result<u64, AppError> {
     if path.is_file() {
         Ok(path.metadata()?.len())
     } else {
+        if !path.try_exists()? {
+            return Err(AppError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Path does not exist: {}", path.display()),
+            )));
+        }
+        let _ = path.metadata()?;
+
         let mut total = 0u64;
         for entry in WalkDir::new(path).into_iter() {
             let entry = match entry {

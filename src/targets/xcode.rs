@@ -79,7 +79,7 @@ impl XcodeTarget {
                 let entry = match entry {
                     Ok(entry) => entry,
                     Err(err) => {
-                        if scope.verbose {
+                        if scope.verbose() {
                             eprintln!("Skipping {:?}: {}", err.path(), err);
                         }
                         continue;
@@ -132,7 +132,12 @@ impl XcodeTarget {
             while let Some(entry) = walker.next() {
                 let entry = match entry {
                     Ok(entry) => entry,
-                    Err(_) => continue,
+                    Err(err) => {
+                        if scope.verbose() {
+                            eprintln!("Skipping {:?}: {}", err.path(), err);
+                        }
+                        continue;
+                    }
                 };
 
                 let file_name = entry.file_name().to_string_lossy();
@@ -197,6 +202,34 @@ mod tests {
     use std::env;
 
     use super::*;
+
+    struct HomeGuard {
+        original_home: Option<String>,
+    }
+
+    impl HomeGuard {
+        fn set(temp_home: &Path) -> Self {
+            let original_home = env::var("HOME").ok();
+            unsafe {
+                env::set_var("HOME", temp_home);
+            }
+            Self { original_home }
+        }
+    }
+
+    impl Drop for HomeGuard {
+        fn drop(&mut self) {
+            if let Some(home) = &self.original_home {
+                unsafe {
+                    env::set_var("HOME", home);
+                }
+            } else {
+                unsafe {
+                    env::remove_var("HOME");
+                }
+            }
+        }
+    }
 
     #[test]
     fn discover_detects_local_derived_data() {
@@ -271,10 +304,7 @@ mod tests {
         derived.create_dir_all().expect("derived data exists");
         derived.child("foo.txt").write_str("cache").expect("cache file exists");
 
-        let original_home = env::var("HOME").ok();
-        unsafe {
-            env::set_var("HOME", temp_home.path());
-        }
+        let _home_guard = HomeGuard::set(temp_home.path());
 
         let scope = ScanScope::new(Vec::new(), false, false);
         let target = XcodeTarget::new(false);
@@ -291,15 +321,5 @@ mod tests {
         let current_target = XcodeTarget::new(true);
         let current_items = current_target.discover(&current_scope).expect("scan succeeds");
         assert!(current_items.is_empty(), "--current should skip global caches");
-
-        if let Some(home) = original_home {
-            unsafe {
-                env::set_var("HOME", home);
-            }
-        } else {
-            unsafe {
-                env::remove_var("HOME");
-            }
-        }
     }
 }

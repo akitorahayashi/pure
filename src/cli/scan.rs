@@ -29,24 +29,6 @@ pub struct ScanArgs {
 
 impl ScanArgs {
     pub fn resolve_categories(&self) -> Result<Vec<Category>, AppError> {
-        let categories = if self.all || self.categories.is_empty() {
-            catalog::categories_for_mode(self.current)
-        } else {
-            catalog::unique_categories(self.categories.clone())
-        };
-
-        if self.current {
-            let unsupported = catalog::unsupported_for_current(&categories);
-            if !unsupported.is_empty() {
-                let names = unsupported
-                    .iter()
-                    .map(|category| category.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                return Err(AppError::UnsupportedCurrentModeCategory(names));
-            }
-        }
-
-        Ok(categories)
+        catalog::resolve(&self.categories, self.all, self.current)
     }
 }

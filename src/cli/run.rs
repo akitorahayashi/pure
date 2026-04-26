@@ -11,7 +11,7 @@ pub struct RunArgs {
     #[arg(short = 't', long = "type", value_name = "CATEGORY", action = ArgAction::Append, conflicts_with = "all")]
     pub categories: Vec<Category>,
 
-    #[arg(long = "all", action = ArgAction::SetTrue)]
+    #[arg(long = "all", action = ArgAction::SetTrue, help = "Scan all supported categories (respects --current)")]
     pub all: bool,
 
     #[arg(short = 'y', long = "yes", action = ArgAction::SetTrue)]
@@ -20,7 +20,7 @@ pub struct RunArgs {
     #[arg(short, long, action = ArgAction::SetTrue)]
     pub verbose: bool,
 
-    #[arg(short = 'c', long = "current", action = ArgAction::SetTrue, conflicts_with = "paths")]
+    #[arg(short = 'c', long = "current", action = ArgAction::SetTrue, conflicts_with = "paths", help = "Limit cleanup to current directory only (skips Brew, Docker)")]
     pub current: bool,
 
     #[arg(value_name = "PATH", num_args = 0..)]
@@ -29,25 +29,7 @@ pub struct RunArgs {
 
 impl RunArgs {
     pub fn resolve_categories(&self) -> Result<Vec<Category>, AppError> {
-        let categories = if self.all || self.categories.is_empty() {
-            catalog::categories_for_mode(self.current)
-        } else {
-            catalog::unique_categories(self.categories.clone())
-        };
-
-        if self.current {
-            let unsupported = catalog::unsupported_for_current(&categories);
-            if !unsupported.is_empty() {
-                let names = unsupported
-                    .iter()
-                    .map(|category| category.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                return Err(AppError::UnsupportedCurrentModeCategory(names));
-            }
-        }
-
-        Ok(categories)
+        catalog::resolve(&self.categories, self.all, self.current)
     }
 
     pub fn interactive(&self) -> bool {

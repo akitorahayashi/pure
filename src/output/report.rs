@@ -25,17 +25,13 @@ pub fn print_scan_report(report: &ScanReport, categories: &[Category], verbose: 
             let total = category_report.total_size();
             println!(
                 "- {:<8} {:>10} across {} item(s)",
-                category,
+                category.display_name(),
                 format_bytes(total),
                 category_report.items.len()
             );
             if verbose {
                 for item in &category_report.items {
-                    println!(
-                        "    • {:<60} {}",
-                        display_path(item.path_str()),
-                        format_bytes(item.size)
-                    );
+                    println!("    • {:<60} {}", display_path(item.path()), format_bytes(item.size));
                 }
             }
         }
@@ -62,19 +58,15 @@ pub fn print_deletion_plan(report: &ScanReport, categories: &[Category], verbose
         if let Some(category_report) = report.report_for(*category) {
             println!(
                 "- {:<8} {:>10} across {} item(s)",
-                category,
+                category.display_name(),
                 format_bytes(category_report.total_size()),
                 category_report.items.len()
             );
             for item in &category_report.items {
                 if verbose {
-                    println!(
-                        "    • {:<60} {}",
-                        display_path(item.path_str()),
-                        format_bytes(item.size)
-                    );
+                    println!("    • {:<60} {}", display_path(item.path()), format_bytes(item.size));
                 } else {
-                    println!("    • {}", display_path(item.path_str()));
+                    println!("    • {}", display_path(item.path()));
                 }
             }
         }
