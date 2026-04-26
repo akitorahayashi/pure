@@ -1,0 +1,90 @@
+use assert_cmd::Command;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use tempfile::TempDir;
+
+pub(crate) struct TestContext {
+    _root: TempDir,
+    home: PathBuf,
+    work_dir: PathBuf,
+    bin_dir: PathBuf,
+    env_vars: RefCell<HashMap<String, String>>,
+}
+
+impl TestContext {
+    pub(crate) fn new() -> Self {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let test_tmp_dir = Path::new(manifest_dir).join("target").join("test_tmp");
+        fs::create_dir_all(&test_tmp_dir).expect("test temp root is created");
+
+        let root = TempDir::new_in(&test_tmp_dir).expect("temp directory is created");
+        let home = root.path().join("home");
+        let work_dir = root.path().join("work");
+        let bin_dir = root.path().join("bin");
+
+        fs::create_dir_all(&home).expect("home directory is created");
+        fs::create_dir_all(&work_dir).expect("work directory is created");
+        fs::create_dir_all(&bin_dir).expect("mock bin directory is created");
+
+        Self { _root: root, home, work_dir, bin_dir, env_vars: RefCell::new(HashMap::new()) }
+    }
+
+    pub(crate) fn home(&self) -> &Path {
+        &self.home
+    }
+
+    pub(crate) fn work_dir(&self) -> &Path {
+        &self.work_dir
+    }
+
+    pub(crate) fn cli(&self) -> Command {
+        self.cli_in(&self.work_dir)
+    }
+
+    pub(crate) fn cli_in<P: AsRef<Path>>(&self, dir: P) -> Command {
+        let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("prf"));
+        cmd.current_dir(dir.as_ref()).env("HOME", &self.home);
+
+        for (key, value) in self.env_vars.borrow().iter() {
+            cmd.env(key, value);
+        }
+
+        cmd
+    }
+
+    pub(crate) fn write_home_file<P: AsRef<Path>>(&self, relative: P, contents: &str) -> PathBuf {
+        let path = self.home.join(relative.as_ref());
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("file parent is created");
+        }
+        fs::write(&path, contents).expect("file is written");
+        path
+    }
+
+    pub(crate) fn create_home_dir<P: AsRef<Path>>(&self, relative: P) -> PathBuf {
+        let path = self.home.join(relative.as_ref());
+        fs::create_dir_all(&path).expect("directory is created");
+        path
+    }
+
+    pub(crate) fn create_mock_command(&self, name: &str, script: &str) -> PathBuf {
+        let path = self.bin_dir.join(name);
+        fs::write(&path, script).expect("mock command is written");
+
+        let mut permissions =
+            fs::metadata(&path).expect("mock command metadata exists").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).expect("mock command is executable");
+
+        let current_path = std::env::var("PATH").unwrap_or_default();
+        self.set_env("PATH", format!("{}:{current_path}", self.bin_dir.display()));
+        path
+    }
+
+    pub(crate) fn set_env<S: AsRef<str>>(&self, key: &str, value: S) {
+        self.env_vars.borrow_mut().insert(key.to_string(), value.as_ref().to_string());
+    }
+}
