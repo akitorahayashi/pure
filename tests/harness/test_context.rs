@@ -1,7 +1,9 @@
 use assert_cmd::Command;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -11,7 +13,7 @@ pub(crate) struct TestContext {
     home: PathBuf,
     work_dir: PathBuf,
     bin_dir: PathBuf,
-    env_vars: RefCell<HashMap<String, String>>,
+    env_vars: RefCell<HashMap<String, OsString>>,
 }
 
 impl TestContext {
@@ -74,17 +76,23 @@ impl TestContext {
         let path = self.bin_dir.join(name);
         fs::write(&path, script).expect("mock command is written");
 
-        let mut permissions =
-            fs::metadata(&path).expect("mock command metadata exists").permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&path, permissions).expect("mock command is executable");
+        #[cfg(unix)]
+        {
+            let mut permissions =
+                fs::metadata(&path).expect("mock command metadata exists").permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&path, permissions).expect("mock command is executable");
+        }
 
-        let current_path = std::env::var("PATH").unwrap_or_default();
-        self.set_env("PATH", format!("{}:{current_path}", self.bin_dir.display()));
+        let current_path = std::env::var_os("PATH").unwrap_or_default();
+        let mut paths = std::env::split_paths(&current_path).collect::<Vec<_>>();
+        paths.insert(0, self.bin_dir.clone());
+        let path_value = std::env::join_paths(paths).expect("mock PATH is valid");
+        self.set_env("PATH", path_value);
         path
     }
 
-    pub(crate) fn set_env<S: AsRef<str>>(&self, key: &str, value: S) {
-        self.env_vars.borrow_mut().insert(key.to_string(), value.as_ref().to_string());
+    pub(crate) fn set_env<S: AsRef<OsStr>>(&self, key: &str, value: S) {
+        self.env_vars.borrow_mut().insert(key.to_string(), value.as_ref().to_os_string());
     }
 }
