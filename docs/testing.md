@@ -6,7 +6,7 @@ Testing is organized by ownership boundary and externally observable behavior:
 
 | Boundary | Location | Purpose |
 |---|---|---|
-| Owner unit tests | `src/commands/**/*.rs`, `src/scanners/xcode.rs` | Owner-local behavior verification inside `#[cfg(test)]` blocks |
+| Owner unit tests | `src/app/**/*.rs`, `src/targets/**/*.rs`, `src/fs/**/*.rs` | Owner-local behavior verification inside `#[cfg(test)]` blocks |
 | Integration tests | `tests/scan.rs`, `tests/run.rs`, `tests/aliases.rs` | CLI contract verification through compiled binary execution |
 
 ## Principles
@@ -34,5 +34,5 @@ cargo test --test aliases
 Run a specific module test:
 
 ```bash
-cargo test commands::scan::tests
+cargo test app::scan::tests
 ```

@@ -49,7 +49,16 @@ prf scan --type python -v       # Show detailed Python cleanup targets
 1. Scans report reclaimable size per category.
 2. `--type <category>`, `--all`, and interactive selection constrain deletion scope.
 3. Destructive actions require confirmation unless `-y/--yes` is supplied.
-4. Exclusions are respected during scanning and deletion.
+
+## Architecture
+
+The implementation follows explicit boundaries:
+
+- `src/cli/` parses CLI arguments and converts them into app options.
+- `src/app/` orchestrates scan and run use cases.
+- `src/targets/` owns cleanup target discovery and Docker cleanup behavior.
+- `src/fs/` owns root resolution, size measurement, and filesystem deletion.
+- `src/output/` owns terminal rendering, progress styles, and prompts.
 
 ## Documentation
 

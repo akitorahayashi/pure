@@ -11,13 +11,12 @@
 
 | Boundary | Path | Responsibility |
 |---|---|---|
-| Interface adapter | `src/main.rs` | CLI parsing, argument shaping, and command dispatch |
-| Command orchestration | `src/commands/` | Scan and run flow control, reporting, and confirmation |
-| Scanner owner | `src/scanners/` | Category-specific target discovery |
-| Docker integration | `src/docker_cleanup.rs` | Docker target listing, scan, and prune execution |
-| Domain model | `src/model.rs` | Category, scan item, and scan report model |
-| Filesystem safety | `src/path.rs` | Path resolution, display shaping, and safe deletion helpers |
-| Output formatting | `src/format.rs` | Human-readable byte formatting |
+| Binary entry | `src/main.rs` | Delegates process entry to library CLI runner |
+| CLI adapter | `src/cli/` | Clap parsing, argument normalization, and app option conversion |
+| Application orchestration | `src/app/` | Scan and run use-case flow orchestration |
+| Target ownership | `src/targets/` | Category model, target registry, and target-specific discovery/cleanup rules |
+| Filesystem boundary | `src/fs/` | Root resolution, size calculation, and deletion mechanics |
+| Output boundary | `src/output/` | Byte formatting, progress styles, reporting, and interactive prompts |
 | Error kernel | `src/error.rs` | Typed application error model |
 
 ## Package Structure
@@ -27,22 +26,39 @@ src/
 ├── main.rs
 ├── lib.rs
 ├── error.rs
-├── format.rs
-├── model.rs
-├── path.rs
-├── docker_cleanup.rs
-├── commands/
+├── cli/
 │   ├── mod.rs
 │   ├── scan.rs
 │   └── run.rs
-└── scanners/
+├── app/
+│   ├── mod.rs
+│   ├── scan.rs
+│   └── run.rs
+├── targets/
+│   ├── mod.rs
+│   ├── catalog.rs
+│   ├── category.rs
+│   ├── item.rs
+│   ├── report.rs
+│   ├── target.rs
+│   ├── name_matcher.rs
+│   ├── python.rs
+│   ├── nodejs.rs
+│   ├── rust.rs
+│   ├── xcode.rs
+│   ├── brew.rs
+│   └── docker.rs
+├── fs/
+│   ├── mod.rs
+│   ├── roots.rs
+│   ├── size.rs
+│   └── remove.rs
+└── output/
     ├── mod.rs
-    ├── xcode.rs
-    ├── python.rs
-    ├── rust.rs
-    ├── nodejs.rs
-    ├── brew.rs
-    └── generic.rs
+    ├── bytes.rs
+    ├── progress.rs
+    ├── report.rs
+    └── prompt.rs
 
 tests/
 ├── scan.rs
@@ -52,12 +68,12 @@ tests/
 
 ## Execution Model
 
-- `scan` performs discovery first and size calculation second, with parallel execution for throughput.
+- `scan` performs target discovery first and size calculation second, with parallel execution for throughput.
 - `run` always starts from a scan report, then applies selection, confirmation, and deletion phases.
-- Docker cleanup is handled as a dedicated path and joined with filesystem deletion when enabled.
+- Docker cleanup is owned by `targets/docker.rs` and remains separate from filesystem deletion.
 
 ## Safety Invariants
 
 - Scanning is non-destructive.
 - Deletion requires explicit confirmation unless `-y/--yes` is provided.
-- Current-directory mode prevents system-wide categories (brew and docker) from running.
+- Current-directory mode excludes system-wide categories (`brew` and `docker`).
